@@ -5,6 +5,7 @@ func (p *Postgres) AddClient(username string, chatID int64) error {
 	sqlRaw := `
 	INSERT INTO client (username, chat_id, status)
 	VALUES ($1, $2, false)
+	ON CONFLICT (chat_id) DO NOTHING;
 	`
 	_, err := p.conn.Exec(p.ctx, sqlRaw, username, chatID)
 
