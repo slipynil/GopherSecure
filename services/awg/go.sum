@@ -12,16 +12,6 @@ github.com/mdlayher/socket v0.5.1 h1:VZaqt6RkGkt2OE9l3GcC6nZkqD3xKeQLyfleW/uBcos
 github.com/mdlayher/socket v0.5.1/go.mod h1:TjPLHI1UgwEv5J1B5q0zTZq12A/6H7nKmtTanQE37IQ=
 github.com/mikioh/ipaddr v0.0.0-20190404000644-d465c8ab6721 h1:RlZweED6sbSArvlE924+mUcZuXKLBHA35U7LN621Bws=
 github.com/mikioh/ipaddr v0.0.0-20190404000644-d465c8ab6721/go.mod h1:Ickgr2WtCLZ2MDGd4Gr0geeCH5HybhRJbonOgQpvSxc=
-github.com/slipynil/awgctrl-go v1.0.3 h1:ipjt2W8tqNBl537G2J19W42HI7X9zAjULs1bz6PnUN8=
-github.com/slipynil/awgctrl-go v1.0.3/go.mod h1:x0ZGblil3iborj1Ei3h2pVFSfSQnb8o9I4izVJfgdtg=
-github.com/slipynil/awgctrl-go v1.0.4 h1:TbC7HKhevtHshQWPvmpmE9iy9dYCs7h+5/x1gVFsS5A=
-github.com/slipynil/awgctrl-go v1.0.4/go.mod h1:x0ZGblil3iborj1Ei3h2pVFSfSQnb8o9I4izVJfgdtg=
-github.com/slipynil/awgctrl-go v1.0.5 h1:ATNIuUZXtGU2XBEVmcydUenY6qdsBhzSPYhqdVjXQrA=
-github.com/slipynil/awgctrl-go v1.0.5/go.mod h1:x0ZGblil3iborj1Ei3h2pVFSfSQnb8o9I4izVJfgdtg=
-github.com/slipynil/awgctrl-go v1.0.6 h1:twChKOLIvziBbwpz8j97C+DJEnoB43yPiUJH5LHqYtk=
-github.com/slipynil/awgctrl-go v1.0.6/go.mod h1:x0ZGblil3iborj1Ei3h2pVFSfSQnb8o9I4izVJfgdtg=
-github.com/slipynil/awgctrl-go v1.0.7 h1:Z1UibhxuVZwdFq3h8WB6GA9/xoEzZXAX8fyI90hy3Lg=
-github.com/slipynil/awgctrl-go v1.0.7/go.mod h1:x0ZGblil3iborj1Ei3h2pVFSfSQnb8o9I4izVJfgdtg=
 github.com/slipynil/awgctrl-go v1.0.8 h1:xIGffHgtgxlpW/5GFihGkbhdsY4hycniRJVdT5zOrVw=
 github.com/slipynil/awgctrl-go v1.0.8/go.mod h1:x0ZGblil3iborj1Ei3h2pVFSfSQnb8o9I4izVJfgdtg=
 golang.org/x/crypto v0.46.0 h1:cKRW/pmt1pKAfetfu+RCEvjvZkA9RimPbh7bhFjGVBU=
