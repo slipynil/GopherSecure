@@ -5,23 +5,28 @@ import (
 	"encoding/json"
 )
 
-type Message struct {
-	StatusCode int    `json:"status_code"`
-	Error      string `json:"error"`
+type Response struct {
+	Data  any    `json:"data,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
-type DelRequest struct {
-	PublicKey string `json:"public_key"`
+func (resp *Response) GetKey() string {
+	if dataMap, ok := resp.Data.(map[string]any); ok {
+		if pubKey, ok := dataMap["public_key"].(string); ok {
+			return pubKey
+		}
+	}
+	return ""
 }
 
-type Request struct {
-	VirtualEndpoint string `json:"virtual_endpoint"`
+type AddPeerRequest struct {
 	ID              int64  `json:"id"`
+	VirtualEndpoint string `json:"virtual_endpoint"`
+	DNS             string `json:"dns,omitempty"`
 }
 
-type AddPeerResponse struct {
-	Message   Message `json:"message"`
-	PublicKey string  `json:"public_key"`
+type DelPeerRequest struct {
+	PublicKey string `json:"public_key"`
 }
 
 type CallbackData struct {

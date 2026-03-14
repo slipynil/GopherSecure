@@ -2,10 +2,11 @@ package telegram
 
 import (
 	"fmt"
-	"telegram-service/internal/dto"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"telegram-service/internal/dto"
 )
 
 type Telegram struct {
@@ -46,7 +47,7 @@ func (t *Telegram) Chan() tgbotapi.UpdatesChannel {
 func keyboardMainMenu() tgbotapi.InlineKeyboardMarkup {
 	options := []string{"получить конфиг", "помощь", "протестировать", "стоимость", "оплатить"}
 
-	var rows [][]tgbotapi.InlineKeyboardButton
+	rows := make([][]tgbotapi.InlineKeyboardButton, 0, len(options))
 	for _, opt := range options {
 		btn := tgbotapi.NewInlineKeyboardButtonData(opt, dto.EncodeCallbackData(opt))
 		row := tgbotapi.NewInlineKeyboardRow(btn)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
 	"telegram-service/internal/dto"
 )
 
@@ -14,20 +15,30 @@ type client struct {
 	url  string
 }
 
+// client constructor
 func New(endpoint string) *client {
-	return &client{&http.Client{}, endpoint}
+	return &client{http: new(http.Client), url: endpoint}
 }
 
-// AddPeer adds a new peer, use method post, and returns the response body with publicKey
-func (c *client) AddPeer(hostID int, telegramID int64) (dto.AddPeerResponse, error) {
-
+// adds a new peer, use method post, and returns the response body with publicKey
+func (c *client) AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 	virtualEndpoint := fmt.Sprintf("10.66.66.%d/32", hostID)
-	// parse request body
-	req := dto.Request{
-		VirtualEndpoint: virtualEndpoint,
-		ID:              telegramID,
+
+	dns := ""
+	if DNS {
+		dns = "1.1.1.1, 8.8.8.8"
 	}
-	reqBytes, _ := json.Marshal(req)
+
+	reqStruct := dto.AddPeerRequest{
+		ID:              telegramID,
+		VirtualEndpoint: virtualEndpoint,
+		DNS:             dns,
+	}
+	// parse request
+	reqBytes, err := json.Marshal(reqStruct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	data := bytes.NewReader(reqBytes)
 
 	url := fmt.Sprintf("%s/peers", c.url)
@@ -35,30 +46,23 @@ func (c *client) AddPeer(hostID int, telegramID int64) (dto.AddPeerResponse, err
 	// get response
 	resp, err := c.http.Post(url, "application/json", data)
 	if err != nil {
-		return dto.AddPeerResponse{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
-
-	// check status code
-	if resp.StatusCode != http.StatusCreated {
-		return dto.AddPeerResponse{}, fmt.Errorf("failed to add peer, status %d", resp.StatusCode)
-	}
-
-	// decode response body
-	respBody := dto.AddPeerResponse{}
-	json.NewDecoder(resp.Body).Decode(&respBody)
-
-	return respBody, nil
+	return responseDecode(resp)
 }
 
 func (c *client) DeletePeer(publicKey string) error {
+
 	url := fmt.Sprintf("%s/peers", c.url)
-	reqDto := dto.DelRequest{PublicKey: publicKey}
-	byte, err := json.Marshal(reqDto)
+	reqStruct := dto.DelPeerRequest{PublicKey: publicKey}
+
+	reqBytes, err := json.Marshal(reqStruct)
 	if err != nil {
 		return err
 	}
-	buf := bytes.NewReader(byte)
+
+	buf := bytes.NewReader(reqBytes)
 	req, err := http.NewRequest("DELETE", url, buf)
 	if err != nil {
 		return err
@@ -71,16 +75,8 @@ func (c *client) DeletePeer(publicKey string) error {
 	}
 	defer resp.Body.Close()
 
-	// check status code
-	switch resp.StatusCode {
-	case http.StatusOK:
-		return nil
-	case http.StatusInternalServerError:
-		return fmt.Errorf("config already deleted, status %d", resp.StatusCode)
-	default:
-		return fmt.Errorf("failed to delete peer, status %d", resp.StatusCode)
-	}
-
+	_, err = responseDecode(resp)
+	return err
 }
 
 func (c *client) DownloadConfFile(telegramID int64) ([]byte, error) {
@@ -94,7 +90,8 @@ func (c *client) DownloadConfFile(telegramID int64) ([]byte, error) {
 
 	// check status code
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to download config file, status %d", resp.StatusCode)
+		err := fmt.Errorf("failed to download config file, status %d", resp.StatusCode)
+		return nil, err
 	}
 
 	// read body to buffer
@@ -102,7 +99,19 @@ func (c *client) DownloadConfFile(telegramID int64) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
-	fmt.Printf("загружен конфиг %s\n", string(data))
-
 	return data, nil
+}
+
+func responseDecode(resp *http.Response) (*dto.Response, error) {
+	respStruct := dto.Response{}
+	err := json.NewDecoder(resp.Body).Decode(&respStruct)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(respStruct.Error) != 0 {
+		err := fmt.Errorf("%v, status code: %v", respStruct.Error, resp.StatusCode)
+		return nil, err
+	}
+	return &respStruct, nil
 }

@@ -1,16 +1,18 @@
 package service
 
 import (
+	"context"
 	"fmt"
+	"time"
+
 	"telegram-service/internal/dto"
 	"telegram-service/logger"
-	"time"
 )
 
-func (s *service) Update(logger *logger.MyLogger) {
+func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 
 	duration := time.Hour
-	go s.CheckSubcription(logger, duration)
+	go s.CheckSubcription(ctx, logger, duration)
 
 	for u := range s.telegram.Chan() {
 		// если есть сигнал об оплате

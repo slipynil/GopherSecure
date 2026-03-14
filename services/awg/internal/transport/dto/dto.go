@@ -6,9 +6,9 @@ type Response struct {
 }
 
 type Request struct {
-	DNS             string `json:"dns,omitempty"`
-	VirtualEndpoint string `json:"virtual_endpoint"`
 	ID              int64  `json:"id"`
+	VirtualEndpoint string `json:"virtual_endpoint"`
+	DNS             string `json:"dns,omitempty"`
 }
 
 type DelRequest struct {
