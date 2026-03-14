@@ -59,14 +59,31 @@ Copy `.env.example` to `.env`. All variables are required and the service panics
 ## Architecture
 
 ```
-cmd/main.go                    # Entry point: loads env, inits awgctrl client, starts HTTP server
+cmd/main.go                           # Entry point: loads env, inits awgctrl client, starts HTTP server
 internal/
-  getEnv/obfuscation.go        # Parses obfuscation env vars into awgctrlgo.Obfuscation struct
+  getEnv/obfuscation.go               # Parses obfuscation env vars into awgctrlgo.Obfuscation struct
   transport/
-    server.go                  # Gorilla Mux router, registers routes, starts listener
-    handlers.go                # HTTP handlers: AddPeer, DeletePeer, SendConfFile
-    dto.go                     # Request/response structs, standard JSON response wrapper
+    server.go                         # Gorilla Mux router, registers routes, starts listener
+    dto/
+      dto.go                          # Request/response structs, standard JSON response wrapper
+    handlers/
+      entity.go                       # Handler struct, interfaces for awg and repository
+      add_peer.go                     # AddPeer HTTP handler
+      delete_peer.go                  # DeletePeer HTTP handler
+      send_file.go                    # SendConfFile HTTP handler
+      http_response.go                # Response formatting utilities
+  repository/
+    entity.go                         # Repository struct for file operations
+    get_file.go                       # GetFile implementation for reading peer configs
+  logger/
+    logger.go                         # Structured logging to syslog
 ```
+
+### Key Design Patterns
+
+- **Dependency Injection**: Handlers and repository are injected as interfaces in `entity.go`
+- **Repository Pattern**: File operations abstracted via `repository` package
+- **Logging**: Centralized syslog-based logging via `logger` package
 
 ### HTTP API
 
@@ -87,4 +104,4 @@ Config files are written to `/etc/amnezia/amneziawg/configs/{id}.conf` on the ho
 
 ## Go Version
 
-The module targets **Go 1.25** (as declared in `go.mod`). The installed toolchain may be newer.
+The module targets **Go 1.26.0** (as declared in `go.mod`). The installed toolchain may be newer.

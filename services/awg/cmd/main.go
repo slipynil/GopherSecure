@@ -2,7 +2,11 @@ package main
 
 import (
 	getenv "awg-service/internal/getEnv"
+	"awg-service/internal/repository"
 	"awg-service/internal/transport"
+	"awg-service/internal/transport/handlers"
+	"awg-service/logger"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -16,31 +20,34 @@ var (
 )
 
 func main() {
+	logger := logger.New()
 	cfg, err := getenv.NewObfuscation()
 
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
 
 	tunnelName, awgEndpoint := getOpt(os.Getenv("DEVICE"), DefaultDEVICE), getOpt(os.Getenv("AWG_ENDPOINT"), DefaultAWG)
 	httpEndpoint := getOpt(os.Getenv("HTTP_ENDPOINT"), DefaultHTTP)
 
 	if tunnelName == "" || awgEndpoint == "" || httpEndpoint == "" {
-		panic("DEVICE and AWG_ENDPOINT environment variables are required")
+		err := fmt.Errorf("DEVICE and AWG_ENDPOINT environment variables are required")
+		logger.Fatal(err)
 	}
 
 	storagePath, err := filepath.Abs("/etc/amnezia/amneziawg/configs/")
-
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
 
 	awg, err := awgctrlgo.New(tunnelName, awgEndpoint, storagePath, cfg)
-
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
 	}
-	service := transport.New(awg, storagePath)
+	repository := repository.New(storagePath)
+	handlers := handlers.New(awg, repository)
+	service := transport.New(handlers)
+
 	service.Start(httpEndpoint)
 }
 
