@@ -1,0 +1,9 @@
+2026-03-15T02-34-05.62927	INFO	service/checkSubscription.go:37	у пользователя 100 закончилась подписка
+2026-03-15T02-34-05.62956	INFO	service/checkSubscription.go:37	у пользователя 200 закончилась подписка
+2026-03-15T02-34-05.62959	INFO	service/checkSubscription.go:39	проверка подписок завершена
+2026-03-15T02-34-05.67947	INFO	service/checkSubscription.go:37	у пользователя 100 закончилась подписка
+2026-03-15T02-34-05.67955	INFO	service/checkSubscription.go:37	у пользователя 200 закончилась подписка
+2026-03-15T02-34-05.67957	INFO	service/checkSubscription.go:39	проверка подписок завершена
+2026-03-15T02-34-05.72963	INFO	service/checkSubscription.go:37	у пользователя 100 закончилась подписка
+2026-03-15T02-34-05.72968	INFO	service/checkSubscription.go:37	у пользователя 200 закончилась подписка
+2026-03-15T02-34-05.72968	INFO	service/checkSubscription.go:39	проверка подписок завершена

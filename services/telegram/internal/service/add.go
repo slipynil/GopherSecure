@@ -8,27 +8,28 @@ import (
 )
 
 func (s *service) add(chatID int64, price int) error {
-	date := time.Now()
-	switch price {
-	case 20000:
-		date = date.Add(30 * time.Hour * 24)
-	case 0:
-		date = date.Add(time.Hour * 24)
+	now := time.Now()
+	duration := 24 * time.Hour
+	if price == 20000 {
+		duration = 30 * 24 * time.Hour
 	}
+	date := now.Add(duration)
 
 	if err := s.postgres.NewConnection(chatID, date); err != nil {
-		return fmt.Errorf("fail to add new entity in postgres %w", err)
+		return fmt.Errorf("Fail to add new entity in postgres %w", err)
 	}
 
 	hostID, err := s.postgres.GetHostID(chatID)
 	if err != nil {
-		return fmt.Errorf("error getting host ID: %w", err)
+		return fmt.Errorf("Error getting host ID: %w", err)
 	}
-	data, err := s.httpClient.AddPeer(hostID, chatID)
+	data, err := s.httpClient.AddPeer(hostID, true, chatID)
 	if err != nil {
-		return fmt.Errorf("error adding peer: %w, status code: %v, description: %v", err, data.Message.StatusCode, data.Message.Error)
+		return fmt.Errorf("Error adding peer: %w", err)
 	}
-	s.postgres.SaveKey(chatID, data.PublicKey)
+	if err := s.postgres.SaveKey(chatID, data.GetKey()); err != nil {
+		return fmt.Errorf("failed to save public key: %w", err)
+	}
 	// get http response buffer of config file
 	bufer, err := s.httpClient.DownloadConfFile(chatID)
 	if err != nil {

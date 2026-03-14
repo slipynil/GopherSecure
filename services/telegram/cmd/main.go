@@ -43,6 +43,7 @@ func main() {
 	logger, closeLogger, _ := logger.NewLogger()
 	defer closeLogger()
 
-	// run service
-	service.Update(logger)
+	// run service with background context
+	ctx := context.Background()
+	service.Update(ctx, logger)
 }

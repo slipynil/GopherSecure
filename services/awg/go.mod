@@ -1,10 +1,10 @@
 module awg-service
 
-go 1.25.6
+go 1.26.0
 
 require (
 	github.com/gorilla/mux v1.8.1
-	github.com/slipynil/awgctrl-go v1.0.8
+	github.com/slipynil/awgctrl-go v1.1.1
 )
 
 require (

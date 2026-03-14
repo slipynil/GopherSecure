@@ -1,10 +1,11 @@
 package service
 
 import (
-	"telegram-service/internal/dto"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"telegram-service/internal/dto"
 )
 
 type postgres interface {
@@ -56,7 +57,7 @@ type telegramClient interface {
 }
 
 type httpClient interface {
-	AddPeer(hostID int, telegramID int64) (dto.AddPeerResponse, error)
+	AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error)
 	DeletePeer(publicKey string) error
 	DownloadConfFile(telegramID int64) ([]byte, error)
 }
