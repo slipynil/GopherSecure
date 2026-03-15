@@ -113,7 +113,7 @@ func (m *mockPostgres) GetPeer(chatID int64) (string, string, error) {
 	if m.GetPeerFunc != nil {
 		return m.GetPeerFunc(chatID)
 	}
-	return "", "", errors.New("not found")
+	return "", "", dto.ErrNotFound
 }
 
 func (m *mockPostgres) SaveKeys(chatID int64, pubKey, psk string) error {
@@ -283,7 +283,7 @@ func TestAdd_NewPeer_30Days(t *testing.T) {
 	saveKeysCalled := false
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 		return &dto.Response{
@@ -331,7 +331,7 @@ func TestAdd_NewPeer_24Hours(t *testing.T) {
 	svc, tg, http, db := newTestService()
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 		return &dto.Response{
@@ -410,7 +410,7 @@ func TestAdd_NewConnection_DBError(t *testing.T) {
 	svc, _, _, db := newTestService()
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
 		return 0, errors.New("db error")
@@ -427,7 +427,7 @@ func TestAdd_AddPeer_Rollback(t *testing.T) {
 	deleteConnectionCalled := false
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
 		return 3, nil
@@ -452,7 +452,7 @@ func TestAdd_AddPeer_HTTPError(t *testing.T) {
 	svc, _, http, db := newTestService()
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
 		return 3, nil
@@ -470,7 +470,7 @@ func TestAdd_SaveKeys_DBError(t *testing.T) {
 	svc, _, http, db := newTestService()
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 		return &dto.Response{Data: map[string]any{"public_key": "k", "preshared_key": "p"}}, nil
@@ -492,7 +492,7 @@ func TestAdd_SaveKeys_Rollback(t *testing.T) {
 	deleteConnectionCalled := false
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) { return 3, nil }
 	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
@@ -528,7 +528,7 @@ func TestAdd_DownloadConf_Error(t *testing.T) {
 	svc, _, http, db := newTestService()
 
 	db.GetPeerFunc = func(chatID int64) (string, string, error) {
-		return "", "", errors.New("not found")
+		return "", "", dto.ErrNotFound
 	}
 	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 		return &dto.Response{Data: map[string]any{"public_key": "k", "preshared_key": "p"}}, nil

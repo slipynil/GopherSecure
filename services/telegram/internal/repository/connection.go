@@ -1,8 +1,11 @@
 package repository
 
 import (
+	"errors"
 	"telegram-service/internal/dto"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func (p *Postgres) NewConnection(chatID int64, expiresAt time.Time) (int, error) {
@@ -27,6 +30,9 @@ func (p *Postgres) RenewConnection(chatID int64, expiresAt time.Time) error {
 func (p *Postgres) GetPeer(chatID int64) (publicKey, presharedKey string, err error) {
 	sqlRaw := `SELECT COALESCE(public_key, ''), COALESCE(preshared_key, '') FROM peer WHERE chat_id = $1`
 	err = p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&publicKey, &presharedKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", dto.ErrNotFound
+	}
 	return
 }
 

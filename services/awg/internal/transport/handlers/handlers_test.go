@@ -265,21 +265,15 @@ func TestAddPeer_VerifyPublicKeyInResponse(t *testing.T) {
 	var rawResp map[string]interface{}
 	json.NewDecoder(w.Body).Decode(&rawResp)
 
-	// The response wraps dto.Response in the data field
-	// Structure: {"data": {"Data": {"public_key": "..."}, "Error": ""}}
-	outerData, hasData := rawResp["data"].(map[string]interface{})
+	// Structure: {"data": {"public_key": "...", "preshared_key": "..."}}
+	data, hasData := rawResp["data"].(map[string]interface{})
 	if !hasData {
 		t.Fatalf("expected data field in response, got: %+v", rawResp)
 	}
 
-	innerData, hasInnerData := outerData["Data"].(map[string]interface{})
-	if !hasInnerData {
-		t.Fatalf("expected Data field in outer data, got: %+v", outerData)
-	}
-
-	publicKey, hasKey := innerData["public_key"].(string)
+	publicKey, hasKey := data["public_key"].(string)
 	if !hasKey {
-		t.Errorf("expected public_key field in inner data")
+		t.Errorf("expected public_key field in data")
 	}
 
 	if publicKey != expectedPublicKey {

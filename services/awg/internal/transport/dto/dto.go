@@ -1,8 +1,8 @@
 package dto
 
 type Response struct {
-	Data  any
-	Error string
+	Data  any    `json:"data,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 type Request struct {

@@ -1,10 +1,13 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	"telegram-service/internal/dto"
 )
 
 func (s *service) add(chatID int64, price int) error {
@@ -13,6 +16,9 @@ func (s *service) add(chatID int64, price int) error {
 	_, _, err := s.postgres.GetPeer(chatID)
 	if err == nil {
 		return s.renewPeer(chatID, expiresAt)
+	}
+	if !errors.Is(err, dto.ErrNotFound) {
+		return fmt.Errorf("failed to check existing peer: %w", err)
 	}
 
 	// DB first — generates host_id for correct virtual IP (10.66.66.N)
