@@ -3,11 +3,11 @@ package repository
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 func (r *Repository) GetFile(id string) (string, error) {
-	filePath := path.Join(r.StoragePath, id+".conf")
+	filePath := filepath.Join(r.ConfDirPath, id+".conf")
 
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {

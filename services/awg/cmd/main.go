@@ -27,15 +27,18 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	tunnelName, awgEndpoint := getOpt(os.Getenv("DEVICE"), DefaultDEVICE), getOpt(os.Getenv("AWG_ENDPOINT"), DefaultAWG)
+	tunnelName := getOpt(os.Getenv("DEVICE"), DefaultDEVICE)
+	awgEndpoint := getOpt(os.Getenv("AWG_ENDPOINT"), DefaultAWG)
 	httpEndpoint := getOpt(os.Getenv("HTTP_ENDPOINT"), DefaultHTTP)
 
-	if tunnelName == "" || awgEndpoint == "" || httpEndpoint == "" {
+	if tunnelName == "" ||
+		awgEndpoint == "" ||
+		httpEndpoint == "" {
 		err := fmt.Errorf("DEVICE and AWG_ENDPOINT environment variables are required")
 		logger.Fatal(err)
 	}
 
-	storagePath, err := filepath.Abs("/etc/amnezia/amneziawg/configs/")
+	storagePath, err := filepath.Abs("/etc/amnezia/amneziawg/")
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -44,7 +47,10 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	repository := repository.New(storagePath)
+	repository := repository.New(storagePath, tunnelName)
+	if err := repository.LoadUsers(); err != nil {
+		logger.Fatal(err)
+	}
 	handlers := handlers.New(awg, repository)
 	service := transport.New(handlers)
 

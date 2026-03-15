@@ -11,6 +11,7 @@ type awg interface {
 }
 
 type repository interface {
+	AddUser(id int64, peer *awgctrlgo.Peer) error
 	GetFile(id string) (string, error)
 }
 
