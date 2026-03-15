@@ -16,7 +16,8 @@ type Repository struct {
 func New(dirPath string, device string) *Repository {
 	globalFilePath := filepath.Join(dirPath, "data", "users.json")
 	confDirPath := filepath.Join(dirPath, "configures")
-	os.MkdirAll(dirPath, 0755)
+	os.Mkdir(confDirPath, 0755)
+	os.MkdirAll(filepath.Join(dirPath, "data"), 0755)
 	return &Repository{
 		GlobalFilePath: globalFilePath,
 		ConfDirPath:    confDirPath,

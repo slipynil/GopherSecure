@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 	// Commented out AWG service
 	tempDir := t.TempDir()
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	if repo == nil {
 		t.Fatal("expected repository to be created, got nil")
@@ -48,7 +48,7 @@ func TestGetFile_Success(t *testing.T) {
 	testFile := filepath.Join(confDir, "test_id.conf")
 	os.WriteFile(testFile, []byte("[Interface]\nAddress = 10.0.0.1"), 0o644)
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	filePath, err := repo.GetFile("test_id")
 
@@ -68,7 +68,7 @@ func TestGetFile_FileNotFound(t *testing.T) {
 	confDir := filepath.Join(tempDir, "configures")
 	os.MkdirAll(confDir, 0o755)
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	filePath, err := repo.GetFile("nonexistent_id")
 
@@ -95,7 +95,7 @@ func TestAddUser_Success(t *testing.T) {
 	dataDir := filepath.Join(tempDir, "data")
 	os.MkdirAll(dataDir, 0o755)
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	peer := &awgctrlgo.Peer{
 		PublicKey:     "test_public_key_123",
@@ -151,7 +151,7 @@ func TestAddUser_AppendMultiple(t *testing.T) {
 	dataDir := filepath.Join(tempDir, "data")
 	os.MkdirAll(dataDir, 0o755)
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	peer1 := &awgctrlgo.Peer{
 		PublicKey:     "key_1",
@@ -209,7 +209,7 @@ func TestAddUser_CreateDataDirectory(t *testing.T) {
 	dataDir := filepath.Join(tempDir, "data")
 	os.MkdirAll(dataDir, 0o755)
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	peer := &awgctrlgo.Peer{
 		PublicKey:     "test_key",
@@ -236,7 +236,7 @@ func TestAddUser_Concurrency(t *testing.T) {
 	dataDir := filepath.Join(tempDir, "data")
 	os.MkdirAll(dataDir, 0o755)
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	done := make(chan error, 3)
 
@@ -307,7 +307,7 @@ func TestGetFile_WithDifferentIds(t *testing.T) {
 		os.WriteFile(testFile, []byte("[Interface]\nAddress = 10.0.0.1"), 0o644)
 	}
 
-	repo := New(tempDir)
+	repo := New(tempDir, "awg0")
 
 	for _, id := range testIds {
 		filePath, err := repo.GetFile(id)
