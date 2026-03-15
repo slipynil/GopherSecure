@@ -35,6 +35,12 @@ func (h *handlers) AddPeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = h.repository.AddUser(req.ID, peer)
+	if err != nil {
+		httpResponse(w, http.StatusInternalServerError, nil, err)
+		return
+	}
+
 	resp := dto.CreatePeerResponse(peer.PublicKey)
 	httpResponse(w, http.StatusCreated, resp, nil)
 }
