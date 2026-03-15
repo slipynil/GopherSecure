@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 )
 
@@ -24,4 +25,5 @@ func httpResponse(
 		resp.Error = err.Error()
 	}
 
+	json.NewEncoder(w).Encode(resp)
 }
