@@ -14,7 +14,7 @@ func (r *Repository) LoadUsers() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	data, err := os.ReadFile(r.GlobalFilePath)
+	data, err := os.ReadFile(r.UsersFilePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil

@@ -7,10 +7,10 @@ import (
 )
 
 type Repository struct {
-	GlobalFilePath string
-	ConfDirPath    string
-	Device         string
-	mu             sync.Mutex
+	UsersFilePath string
+	ConfDirPath   string
+	Device        string
+	mu            sync.Mutex
 }
 
 func New(dirPath string, device string) *Repository {
@@ -19,8 +19,8 @@ func New(dirPath string, device string) *Repository {
 	os.Mkdir(confDirPath, 0755)
 	os.MkdirAll(filepath.Join(dirPath, "data"), 0755)
 	return &Repository{
-		GlobalFilePath: globalFilePath,
-		ConfDirPath:    confDirPath,
-		Device:         device,
+		UsersFilePath: globalFilePath,
+		ConfDirPath:   confDirPath,
+		Device:        device,
 	}
 }

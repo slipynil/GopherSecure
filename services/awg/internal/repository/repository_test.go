@@ -23,8 +23,8 @@ func TestNew(t *testing.T) {
 	expectedGlobalPath := filepath.Join(tempDir, "data", "users.json")
 	expectedConfPath := filepath.Join(tempDir, "configures")
 
-	if repo.GlobalFilePath != expectedGlobalPath {
-		t.Errorf("expected GlobalFilePath %s, got %s", expectedGlobalPath, repo.GlobalFilePath)
+	if repo.UsersFilePath != expectedGlobalPath {
+		t.Errorf("expected UsersFilePath %s, got %s", expectedGlobalPath, repo.UsersFilePath)
 	}
 
 	if repo.ConfDirPath != expectedConfPath {
@@ -110,7 +110,7 @@ func TestAddUser_Success(t *testing.T) {
 	}
 
 	// Verify file was created
-	content, err := os.ReadFile(repo.GlobalFilePath)
+	content, err := os.ReadFile(repo.UsersFilePath)
 	if err != nil {
 		t.Fatalf("expected users.json to be created, got error %v", err)
 	}
@@ -176,7 +176,7 @@ func TestAddUser_AppendMultiple(t *testing.T) {
 	}
 
 	// Verify both users were saved
-	content, err := os.ReadFile(repo.GlobalFilePath)
+	content, err := os.ReadFile(repo.UsersFilePath)
 	if err != nil {
 		t.Errorf("expected users.json to exist, got error %v", err)
 	}
@@ -222,7 +222,7 @@ func TestAddUser_CreateDataDirectory(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if _, statErr := os.Stat(repo.GlobalFilePath); os.IsNotExist(statErr) {
+	if _, statErr := os.Stat(repo.UsersFilePath); os.IsNotExist(statErr) {
 		t.Errorf("expected users.json file to be created")
 	}
 	// Commented out AWG service
@@ -277,7 +277,7 @@ func TestAddUser_Concurrency(t *testing.T) {
 	}
 
 	// Verify all users were saved
-	content, err := os.ReadFile(repo.GlobalFilePath)
+	content, err := os.ReadFile(repo.UsersFilePath)
 	if err != nil {
 		t.Errorf("expected users.json to exist, got error %v", err)
 	}

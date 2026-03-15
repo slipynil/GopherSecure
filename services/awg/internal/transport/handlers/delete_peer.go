@@ -21,5 +21,9 @@ func (h *handlers) DeletePeer(w http.ResponseWriter, r *http.Request) {
 		httpResponse(w, http.StatusInternalServerError, nil, err)
 		return
 	}
+	if err := h.repository.DeleteUser(req.PublicKey); err != nil {
+		httpResponse(w, http.StatusInternalServerError, nil, err)
+		return
+	}
 	httpResponse(w, http.StatusOK, nil, nil)
 }

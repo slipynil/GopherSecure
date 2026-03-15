@@ -13,7 +13,7 @@ func (r *Repository) AddUser(id int64, peer *awgctrlgo.Peer) error {
 	defer r.mu.Unlock()
 
 	var users []model.User
-	content, err := os.ReadFile(r.GlobalFilePath)
+	content, err := os.ReadFile(r.UsersFilePath)
 	if err == nil && len(content) > 0 {
 		if err := json.Unmarshal(content, &users); err != nil {
 			return err
@@ -25,7 +25,7 @@ func (r *Repository) AddUser(id int64, peer *awgctrlgo.Peer) error {
 		PresharedKey:    peer.PresharedKey,
 		VirtualEndpoint: peer.VirtualSocket,
 	})
-	file, err := os.OpenFile(r.GlobalFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(r.UsersFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

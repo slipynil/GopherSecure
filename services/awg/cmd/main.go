@@ -38,17 +38,17 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	storagePath, err := filepath.Abs("/etc/amnezia/amneziawg/")
+	parrentDirPath, err := filepath.Abs("/etc/amnezia/amneziawg/")
 	if err != nil {
+		logger.Fatal(err)
+	}
+	repository := repository.New(parrentDirPath, tunnelName)
+	if err := repository.LoadUsers(); err != nil {
 		logger.Fatal(err)
 	}
 
-	awg, err := awgctrlgo.New(tunnelName, awgEndpoint, storagePath, cfg)
+	awg, err := awgctrlgo.New(tunnelName, awgEndpoint, repository.ConfDirPath, cfg)
 	if err != nil {
-		logger.Fatal(err)
-	}
-	repository := repository.New(storagePath, tunnelName)
-	if err := repository.LoadUsers(); err != nil {
 		logger.Fatal(err)
 	}
 	handlers := handlers.New(awg, repository)
