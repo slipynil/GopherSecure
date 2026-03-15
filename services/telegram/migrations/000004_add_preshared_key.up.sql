@@ -1,0 +1,1 @@
+ALTER TABLE peer ADD COLUMN preshared_key TEXT NOT NULL DEFAULT '';

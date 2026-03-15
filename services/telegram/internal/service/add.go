@@ -8,34 +8,55 @@ import (
 )
 
 func (s *service) add(chatID int64, price int) error {
-	now := time.Now()
+	expiresAt := s.calculateExpiration(price)
+
+	_, _, err := s.postgres.GetPeer(chatID)
+	if err == nil {
+		return s.renewPeer(chatID, expiresAt)
+	}
+
+	// DB first — generates host_id for correct virtual IP (10.66.66.N)
+	hostID, err := s.postgres.NewConnection(chatID, expiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to create connection: %w", err)
+	}
+
+	data, err := s.httpClient.AddPeer(hostID, true, chatID)
+	if err != nil {
+		_ = s.postgres.DeleteConnection(chatID)
+		return fmt.Errorf("failed to add peer to AWG: %w", err)
+	}
+
+	if err := s.postgres.SaveKeys(chatID, data.GetKey(), data.GetPresharedKey()); err != nil {
+		_ = s.httpClient.DeletePeer(data.GetKey())
+		_ = s.postgres.DeleteConnection(chatID)
+		return fmt.Errorf("failed to save keys: %w", err)
+	}
+
+	return s.sendConfigToUser(chatID)
+}
+
+func (s *service) calculateExpiration(price int) time.Time {
 	duration := 24 * time.Hour
 	if price == 20000 {
 		duration = 30 * 24 * time.Hour
 	}
-	date := now.Add(duration)
+	return time.Now().Add(duration)
+}
 
-	if err := s.postgres.NewConnection(chatID, date); err != nil {
-		return fmt.Errorf("Fail to add new entity in postgres %w", err)
+func (s *service) renewPeer(chatID int64, expiresAt time.Time) error {
+	if err := s.postgres.RenewConnection(chatID, expiresAt); err != nil {
+		return fmt.Errorf("failed to renew subscription: %w", err)
 	}
+	return s.sendConfigToUser(chatID)
+}
 
-	hostID, err := s.postgres.GetHostID(chatID)
+func (s *service) sendConfigToUser(chatID int64) error {
+	buf, err := s.httpClient.DownloadConfFile(chatID)
 	if err != nil {
-		return fmt.Errorf("Error getting host ID: %w", err)
+		return fmt.Errorf("failed to download config: %w", err)
 	}
-	data, err := s.httpClient.AddPeer(hostID, true, chatID)
-	if err != nil {
-		return fmt.Errorf("Error adding peer: %w", err)
-	}
-	if err := s.postgres.SaveKey(chatID, data.GetKey()); err != nil {
-		return fmt.Errorf("failed to save public key: %w", err)
-	}
-	// get http response buffer of config file
-	bufer, err := s.httpClient.DownloadConfFile(chatID)
-	if err != nil {
-		return fmt.Errorf("Error downloading config file: %w", err)
-	}
-	return s.telegram.SendFile(chatID, bufer)
+	return s.telegram.SendFile(chatID, buf)
 }
 
 func (s *service) getConfFile(u tgbotapi.Update) error {
@@ -44,10 +65,9 @@ func (s *service) getConfFile(u tgbotapi.Update) error {
 		s.telegram.UpdateSendText(u, "у вас нет подписки")
 		return nil
 	}
-	// get http response buffer of config file
-	bufer, err := s.httpClient.DownloadConfFile(chatID)
+	buf, err := s.httpClient.DownloadConfFile(chatID)
 	if err != nil {
-		return fmt.Errorf("Error downloading config file: %w", err)
+		return fmt.Errorf("failed to download config file: %w", err)
 	}
-	return s.telegram.SendFile(chatID, bufer)
+	return s.telegram.SendFile(chatID, buf)
 }

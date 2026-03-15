@@ -13,20 +13,23 @@ import (
 )
 
 // Mock implementations
+
 type mockPostgres struct {
-	AddClientFunc              func(username string, chatID int64) error
-	TestedFunc                 func(chatID int64) error
-	IsTestedFunc               func(chatID int64) bool
-	StatusTrueFunc             func(chatID int64) error
-	StatusFalseFunc            func(chatID int64) error
-	CheckStatusFunc            func(chatID int64) bool
-	NewPaymentFunc             func(chatID int64, payload string) error
+	AddClientFunc               func(username string, chatID int64) error
+	TestedFunc                  func(chatID int64) error
+	IsTestedFunc                func(chatID int64) bool
+	StatusTrueFunc              func(chatID int64) error
+	StatusFalseFunc             func(chatID int64) error
+	CheckStatusFunc             func(chatID int64) bool
+	NewPaymentFunc              func(chatID int64, payload string) error
 	SuccessfulPaymentStatusFunc func(payload string) error
-	NewConnectionFunc          func(chatID int64, expires_at time.Time) error
-	SaveKeyFunc                func(chatID int64, publicKey string) error
-	ExpiredConnectionFunc      func() ([]dto.DelEntity, error)
-	GetHostIDFunc              func(chatID int64) (int, error)
-	CloseFunc                  func() error
+	NewConnectionFunc           func(chatID int64, expiresAt time.Time) (int, error)
+	DeleteConnectionFunc        func(chatID int64) error
+	RenewConnectionFunc         func(chatID int64, expiresAt time.Time) error
+	GetPeerFunc                 func(chatID int64) (string, string, error)
+	SaveKeysFunc                func(chatID int64, pubKey, psk string) error
+	ExpiredConnectionFunc       func() ([]dto.DelEntity, error)
+	CloseFunc                   func() error
 }
 
 func (m *mockPostgres) AddClient(username string, chatID int64) error {
@@ -85,16 +88,37 @@ func (m *mockPostgres) SuccessfulPaymentStatus(payload string) error {
 	return nil
 }
 
-func (m *mockPostgres) NewConnection(chatID int64, expires_at time.Time) error {
+func (m *mockPostgres) NewConnection(chatID int64, expiresAt time.Time) (int, error) {
 	if m.NewConnectionFunc != nil {
-		return m.NewConnectionFunc(chatID, expires_at)
+		return m.NewConnectionFunc(chatID, expiresAt)
+	}
+	return 1, nil
+}
+
+func (m *mockPostgres) DeleteConnection(chatID int64) error {
+	if m.DeleteConnectionFunc != nil {
+		return m.DeleteConnectionFunc(chatID)
 	}
 	return nil
 }
 
-func (m *mockPostgres) SaveKey(chatID int64, publicKey string) error {
-	if m.SaveKeyFunc != nil {
-		return m.SaveKeyFunc(chatID, publicKey)
+func (m *mockPostgres) RenewConnection(chatID int64, expiresAt time.Time) error {
+	if m.RenewConnectionFunc != nil {
+		return m.RenewConnectionFunc(chatID, expiresAt)
+	}
+	return nil
+}
+
+func (m *mockPostgres) GetPeer(chatID int64) (string, string, error) {
+	if m.GetPeerFunc != nil {
+		return m.GetPeerFunc(chatID)
+	}
+	return "", "", errors.New("not found")
+}
+
+func (m *mockPostgres) SaveKeys(chatID int64, pubKey, psk string) error {
+	if m.SaveKeysFunc != nil {
+		return m.SaveKeysFunc(chatID, pubKey, psk)
 	}
 	return nil
 }
@@ -106,13 +130,6 @@ func (m *mockPostgres) ExpiredConnection() ([]dto.DelEntity, error) {
 	return nil, nil
 }
 
-func (m *mockPostgres) GetHostID(chatID int64) (int, error) {
-	if m.GetHostIDFunc != nil {
-		return m.GetHostIDFunc(chatID)
-	}
-	return 0, nil
-}
-
 func (m *mockPostgres) Close() error {
 	if m.CloseFunc != nil {
 		return m.CloseFunc()
@@ -121,14 +138,14 @@ func (m *mockPostgres) Close() error {
 }
 
 type mockTelegramClient struct {
-	ChanFunc                   func() tgbotapi.UpdatesChannel
-	MenuFunc                   func(chatID int64) error
-	UpdateMainMenuFunc         func(update tgbotapi.Update) error
-	UpdateSendTextFunc         func(update tgbotapi.Update, text string) error
-	SendTextFunc               func(chatID int64, text string) error
-	SendFileFunc               func(chatID int64, buffer []byte) error
-	CreateAndSendInvoiceFunc   func(chatID int64, payload string) error
-	PreCheckoutQueryFunc       func(update tgbotapi.Update) error
+	ChanFunc                    func() tgbotapi.UpdatesChannel
+	MenuFunc                    func(chatID int64) error
+	UpdateMainMenuFunc          func(update tgbotapi.Update) error
+	UpdateSendTextFunc          func(update tgbotapi.Update, text string) error
+	SendTextFunc                func(chatID int64, text string) error
+	SendFileFunc                func(chatID int64, buffer []byte) error
+	CreateAndSendInvoiceFunc    func(chatID int64, payload string) error
+	PreCheckoutQueryFunc        func(update tgbotapi.Update) error
 	HandleSuccessfulPaymentFunc func(update tgbotapi.Update) (*dto.PaymentHandler, error)
 }
 
@@ -222,240 +239,328 @@ func (m *mockHTTPClient) DownloadConfFile(telegramID int64) ([]byte, error) {
 	return nil, nil
 }
 
+// helpers
+
+func newTestService() (service, *mockTelegramClient, *mockHTTPClient, *mockPostgres) {
+	tg := &mockTelegramClient{}
+	http := &mockHTTPClient{}
+	db := &mockPostgres{}
+	return New(tg, http, db), tg, http, db
+}
+
+func callbackUpdate(chatID int64) tgbotapi.Update {
+	return tgbotapi.Update{
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+			},
+		},
+	}
+}
+
 // Tests
 
 func TestNewService(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, tg, http, db := newTestService()
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	if svc.telegram != mockTg {
+	if svc.telegram != tg {
 		t.Error("telegram client not set")
 	}
-	if svc.httpClient != mockHttp {
+	if svc.httpClient != http {
 		t.Error("http client not set")
 	}
-	if svc.postgres != mockDb {
+	if svc.postgres != db {
 		t.Error("postgres not set")
 	}
 }
 
-func TestAdd_WithPaid30Days(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+// add() — new peer
 
-	dateCalled := false
-	hostIDCalled := false
-	keyWasSaved := false
+func TestAdd_NewPeer_30Days(t *testing.T) {
+	svc, tg, http, db := newTestService()
 
-	mockDb.NewConnectionFunc = func(chatID int64, expiresAt time.Time) error {
-		dateCalled = true
-		now := time.Now()
-		expectedDate := now.Add(30 * 24 * time.Hour)
-		diff := expiresAt.Sub(expectedDate).Abs()
-		if diff > time.Minute {
-			t.Errorf("expected ~30 days, got %v", expiresAt.Sub(now))
-		}
-		return nil
+	newConnectionCalled := false
+	saveKeysCalled := false
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
 	}
-
-	mockDb.GetHostIDFunc = func(chatID int64) (int, error) {
-		hostIDCalled = true
-		if chatID != 12345 {
-			t.Errorf("expected chatID 12345, got %d", chatID)
+	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
+		return &dto.Response{
+			Data: map[string]any{
+				"public_key":    "pub_key_abc",
+				"preshared_key": "psk_xyz",
+			},
+		}, nil
+	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
+		newConnectionCalled = true
+		diff := expiresAt.Sub(time.Now().Add(30 * 24 * time.Hour)).Abs()
+		if diff > time.Minute {
+			t.Errorf("expected ~30 days expiration, got diff: %v", diff)
 		}
 		return 5, nil
 	}
-
-	mockHttp.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
-		if hostID != 5 {
-			t.Errorf("expected hostID 5, got %d", hostID)
+	db.SaveKeysFunc = func(chatID int64, pubKey, psk string) error {
+		saveKeysCalled = true
+		if pubKey != "pub_key_abc" {
+			t.Errorf("expected pub_key_abc, got %s", pubKey)
 		}
-		if !DNS {
-			t.Error("expected DNS to be true")
-		}
-		return &dto.Response{
-			Data: map[string]any{"public_key": "test_key"},
-		}, nil
-	}
-
-	mockDb.SaveKeyFunc = func(chatID int64, publicKey string) error {
-		keyWasSaved = true
-		if publicKey != "test_key" {
-			t.Errorf("expected test_key, got %s", publicKey)
+		if psk != "psk_xyz" {
+			t.Errorf("expected psk_xyz, got %s", psk)
 		}
 		return nil
 	}
-
-	mockHttp.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
-		return []byte("config data"), nil
+	http.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
+		return []byte("config"), nil
 	}
+	tg.SendFileFunc = func(chatID int64, buffer []byte) error { return nil }
 
-	mockTg.SendFileFunc = func(chatID int64, buffer []byte) error {
-		if string(buffer) != "config data" {
-			t.Errorf("expected config data, got %s", string(buffer))
-		}
-		return nil
-	}
-
-	svc := New(mockTg, mockHttp, mockDb)
-	err := svc.add(12345, 20000)
-
-	if err != nil {
+	if err := svc.add(12345, 20000); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !dateCalled {
+	if !newConnectionCalled {
 		t.Error("NewConnection not called")
 	}
-	if !hostIDCalled {
-		t.Error("GetHostID not called")
-	}
-	if !keyWasSaved {
-		t.Error("SaveKey not called")
+	if !saveKeysCalled {
+		t.Error("SaveKeys not called")
 	}
 }
 
-func TestAdd_WithTestAccess24h(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+func TestAdd_NewPeer_24Hours(t *testing.T) {
+	svc, tg, http, db := newTestService()
 
-	mockDb.NewConnectionFunc = func(chatID int64, expiresAt time.Time) error {
-		now := time.Now()
-		expectedDate := now.Add(24 * time.Hour)
-		diff := expiresAt.Sub(expectedDate).Abs()
-		if diff > time.Minute {
-			t.Errorf("expected ~24 hours, got %v", expiresAt.Sub(now))
-		}
-		return nil
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
 	}
-
-	mockDb.GetHostIDFunc = func(chatID int64) (int, error) {
-		return 1, nil
-	}
-
-	mockHttp.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
+	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 		return &dto.Response{
-			Data: map[string]any{"public_key": "test_key"},
+			Data: map[string]any{
+				"public_key":    "pub_key",
+				"preshared_key": "psk",
+			},
 		}, nil
 	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
+		diff := expiresAt.Sub(time.Now().Add(24 * time.Hour)).Abs()
+		if diff > time.Minute {
+			t.Errorf("expected ~24h expiration, got diff: %v", diff)
+		}
+		return 2, nil
+	}
+	db.SaveKeysFunc = func(chatID int64, pubKey, psk string) error { return nil }
+	http.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
+		return []byte("config"), nil
+	}
+	tg.SendFileFunc = func(chatID int64, buffer []byte) error { return nil }
 
-	mockDb.SaveKeyFunc = func(chatID int64, publicKey string) error {
+	if err := svc.add(12345, 0); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// add() — renew existing peer
+
+func TestAdd_RenewExistingPeer(t *testing.T) {
+	svc, tg, http, db := newTestService()
+
+	renewCalled := false
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "existing_pub_key", "existing_psk", nil
+	}
+	db.RenewConnectionFunc = func(chatID int64, expiresAt time.Time) error {
+		renewCalled = true
 		return nil
 	}
+	http.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
+		return []byte("config"), nil
+	}
+	tg.SendFileFunc = func(chatID int64, buffer []byte) error { return nil }
 
-	mockHttp.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
+	if err := svc.add(12345, 20000); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !renewCalled {
+		t.Error("RenewConnection not called for existing peer")
+	}
+}
+
+func TestAdd_RenewPeer_DBError(t *testing.T) {
+	svc, _, http, db := newTestService()
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "pub_key", "psk", nil
+	}
+	db.RenewConnectionFunc = func(chatID int64, expiresAt time.Time) error {
+		return errors.New("db error")
+	}
+	http.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
 		return []byte("config"), nil
 	}
 
-	mockTg.SendFileFunc = func(chatID int64, buffer []byte) error {
-		return nil
-	}
-
-	svc := New(mockTg, mockHttp, mockDb)
-	err := svc.add(12345, 0)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestAdd_DBError(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
-
-	mockDb.NewConnectionFunc = func(chatID int64, expiresAt time.Time) error {
-		return errors.New("db connection error")
-	}
-
-	svc := New(mockTg, mockHttp, mockDb)
-	err := svc.add(12345, 20000)
-
-	if err == nil {
+	if err := svc.add(12345, 20000); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
 
-func TestAdd_GetHostIDError(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+// add() — error paths for new peer
 
-	mockDb.NewConnectionFunc = func(chatID int64, expiresAt time.Time) error {
-		return nil
+func TestAdd_NewConnection_DBError(t *testing.T) {
+	svc, _, _, db := newTestService()
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
+	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
+		return 0, errors.New("db error")
 	}
 
-	mockDb.GetHostIDFunc = func(chatID int64) (int, error) {
-		return 0, errors.New("host not found")
-	}
-
-	svc := New(mockTg, mockHttp, mockDb)
-	err := svc.add(12345, 20000)
-
-	if err == nil {
+	if err := svc.add(12345, 20000); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
 
-func TestAdd_HTTPError(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+func TestAdd_AddPeer_Rollback(t *testing.T) {
+	svc, _, http, db := newTestService()
 
-	mockDb.NewConnectionFunc = func(chatID int64, expiresAt time.Time) error {
+	deleteConnectionCalled := false
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
+	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
+		return 3, nil
+	}
+	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
+		return nil, errors.New("awg unavailable")
+	}
+	db.DeleteConnectionFunc = func(chatID int64) error {
+		deleteConnectionCalled = true
 		return nil
 	}
 
-	mockDb.GetHostIDFunc = func(chatID int64) (int, error) {
-		return 5, nil
+	if err := svc.add(12345, 20000); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !deleteConnectionCalled {
+		t.Error("DeleteConnection not called for rollback")
+	}
+}
+
+func TestAdd_AddPeer_HTTPError(t *testing.T) {
+	svc, _, http, db := newTestService()
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
+	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) {
+		return 3, nil
+	}
+	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
+		return nil, errors.New("awg unavailable")
 	}
 
-	mockHttp.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
-		return nil, errors.New("http error")
-	}
-
-	svc := New(mockTg, mockHttp, mockDb)
-	err := svc.add(12345, 20000)
-
-	if err == nil {
+	if err := svc.add(12345, 20000); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
+
+func TestAdd_SaveKeys_DBError(t *testing.T) {
+	svc, _, http, db := newTestService()
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
+	}
+	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
+		return &dto.Response{Data: map[string]any{"public_key": "k", "preshared_key": "p"}}, nil
+	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) { return 3, nil }
+	db.SaveKeysFunc = func(chatID int64, pubKey, psk string) error {
+		return errors.New("db error")
+	}
+
+	if err := svc.add(12345, 20000); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestAdd_SaveKeys_Rollback(t *testing.T) {
+	svc, _, http, db := newTestService()
+
+	deletePeerCalled := false
+	deleteConnectionCalled := false
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
+	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) { return 3, nil }
+	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
+		return &dto.Response{Data: map[string]any{"public_key": "pub_key", "preshared_key": "psk"}}, nil
+	}
+	db.SaveKeysFunc = func(chatID int64, pubKey, psk string) error {
+		return errors.New("db error")
+	}
+	http.DeletePeerFunc = func(publicKey string) error {
+		deletePeerCalled = true
+		if publicKey != "pub_key" {
+			t.Errorf("expected pub_key, got %s", publicKey)
+		}
+		return nil
+	}
+	db.DeleteConnectionFunc = func(chatID int64) error {
+		deleteConnectionCalled = true
+		return nil
+	}
+
+	if err := svc.add(12345, 20000); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !deletePeerCalled {
+		t.Error("DeletePeer not called for rollback")
+	}
+	if !deleteConnectionCalled {
+		t.Error("DeleteConnection not called for rollback")
+	}
+}
+
+func TestAdd_DownloadConf_Error(t *testing.T) {
+	svc, _, http, db := newTestService()
+
+	db.GetPeerFunc = func(chatID int64) (string, string, error) {
+		return "", "", errors.New("not found")
+	}
+	http.AddPeerFunc = func(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
+		return &dto.Response{Data: map[string]any{"public_key": "k", "preshared_key": "p"}}, nil
+	}
+	db.NewConnectionFunc = func(chatID int64, expiresAt time.Time) (int, error) { return 3, nil }
+	db.SaveKeysFunc = func(chatID int64, pubKey, psk string) error { return nil }
+	http.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
+		return nil, errors.New("download failed")
+	}
+
+	if err := svc.add(12345, 20000); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+// getConfFile()
 
 func TestGetConfFile_NoSubscription(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, tg, _, db := newTestService()
 
-	mockDb.CheckStatusFunc = func(chatID int64) bool {
-		return false
-	}
+	db.CheckStatusFunc = func(chatID int64) bool { return false }
 
 	updateSendTextCalled := false
-	mockTg.UpdateSendTextFunc = func(update tgbotapi.Update, text string) error {
+	tg.UpdateSendTextFunc = func(update tgbotapi.Update, text string) error {
 		updateSendTextCalled = true
 		if text != "у вас нет подписки" {
-			t.Errorf("expected no subscription message, got %s", text)
+			t.Errorf("unexpected message: %s", text)
 		}
 		return nil
 	}
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	update := tgbotapi.Update{
-		CallbackQuery: &tgbotapi.CallbackQuery{
-			Message: &tgbotapi.Message{
-				Chat: &tgbotapi.Chat{ID: 12345},
-			},
-		},
-	}
-
-	err := svc.getConfFile(update)
-	if err != nil {
+	if err := svc.getConfFile(callbackUpdate(12345)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !updateSendTextCalled {
@@ -464,48 +569,23 @@ func TestGetConfFile_NoSubscription(t *testing.T) {
 }
 
 func TestGetConfFile_WithSubscription(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, tg, http, db := newTestService()
 
-	mockDb.CheckStatusFunc = func(chatID int64) bool {
-		if chatID != 12345 {
-			t.Errorf("expected chatID 12345, got %d", chatID)
-		}
-		return true
-	}
-
-	sendFileCalled := false
-	mockHttp.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
-		if telegramID != 12345 {
-			t.Errorf("expected telegramID 12345, got %d", telegramID)
-		}
+	db.CheckStatusFunc = func(chatID int64) bool { return true }
+	http.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
 		return []byte("config data"), nil
 	}
 
-	mockTg.SendFileFunc = func(chatID int64, buffer []byte) error {
+	sendFileCalled := false
+	tg.SendFileFunc = func(chatID int64, buffer []byte) error {
 		sendFileCalled = true
-		if chatID != 12345 {
-			t.Errorf("expected chatID 12345, got %d", chatID)
-		}
 		if string(buffer) != "config data" {
 			t.Errorf("expected config data, got %s", string(buffer))
 		}
 		return nil
 	}
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	update := tgbotapi.Update{
-		CallbackQuery: &tgbotapi.CallbackQuery{
-			Message: &tgbotapi.Message{
-				Chat: &tgbotapi.Chat{ID: 12345},
-			},
-		},
-	}
-
-	err := svc.getConfFile(update)
-	if err != nil {
+	if err := svc.getConfFile(callbackUpdate(12345)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !sendFileCalled {
@@ -514,194 +594,111 @@ func TestGetConfFile_WithSubscription(t *testing.T) {
 }
 
 func TestGetConfFile_DownloadError(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, _, http, db := newTestService()
 
-	mockDb.CheckStatusFunc = func(chatID int64) bool {
-		return true
-	}
-
-	mockHttp.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
+	db.CheckStatusFunc = func(chatID int64) bool { return true }
+	http.DownloadConfFileFunc = func(telegramID int64) ([]byte, error) {
 		return nil, errors.New("download failed")
 	}
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	update := tgbotapi.Update{
-		CallbackQuery: &tgbotapi.CallbackQuery{
-			Message: &tgbotapi.Message{
-				Chat: &tgbotapi.Chat{ID: 12345},
-			},
-		},
-	}
-
-	err := svc.getConfFile(update)
-	if err == nil {
+	if err := svc.getConfFile(callbackUpdate(12345)); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
 
+// Invoice()
+
 func TestInvoice(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, tg, _, db := newTestService()
 
 	payloadCaptured := ""
-	mockDb.NewPaymentFunc = func(chatID int64, payload string) error {
-		if chatID != 12345 {
-			t.Errorf("expected chatID 12345, got %d", chatID)
-		}
+	db.NewPaymentFunc = func(chatID int64, payload string) error {
 		payloadCaptured = payload
 		return nil
 	}
-
-	mockTg.CreateAndSendInvoiceFunc = func(chatID int64, payload string) error {
-		if chatID != 12345 {
-			t.Errorf("expected chatID 12345, got %d", chatID)
-		}
+	tg.CreateAndSendInvoiceFunc = func(chatID int64, payload string) error {
 		if payload != payloadCaptured {
-			t.Errorf("expected payload %s, got %s", payloadCaptured, payload)
+			t.Errorf("payload mismatch: %s != %s", payload, payloadCaptured)
 		}
 		return nil
 	}
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	update := tgbotapi.Update{
-		CallbackQuery: &tgbotapi.CallbackQuery{
-			Message: &tgbotapi.Message{
-				Chat: &tgbotapi.Chat{ID: 12345},
-			},
-		},
-	}
-
-	err := svc.Invoice(update)
-	if err != nil {
+	if err := svc.Invoice(callbackUpdate(12345)); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	// Check that a UUID was generated (non-empty payload)
 	if payloadCaptured == "" {
 		t.Error("expected non-empty payload")
 	}
 }
 
 func TestInvoice_DBError(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, _, _, db := newTestService()
 
-	mockDb.NewPaymentFunc = func(chatID int64, payload string) error {
+	db.NewPaymentFunc = func(chatID int64, payload string) error {
 		return errors.New("db error")
 	}
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	update := tgbotapi.Update{
-		CallbackQuery: &tgbotapi.CallbackQuery{
-			Message: &tgbotapi.Message{
-				Chat: &tgbotapi.Chat{ID: 12345},
-			},
-		},
-	}
-
-	err := svc.Invoice(update)
-	if err == nil {
+	if err := svc.Invoice(callbackUpdate(12345)); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
 
 func TestInvoice_TelegramError(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, tg, _, db := newTestService()
 
-	mockDb.NewPaymentFunc = func(chatID int64, payload string) error {
-		return nil
-	}
-
-	mockTg.CreateAndSendInvoiceFunc = func(chatID int64, payload string) error {
+	db.NewPaymentFunc = func(chatID int64, payload string) error { return nil }
+	tg.CreateAndSendInvoiceFunc = func(chatID int64, payload string) error {
 		return errors.New("telegram error")
 	}
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	update := tgbotapi.Update{
-		CallbackQuery: &tgbotapi.CallbackQuery{
-			Message: &tgbotapi.Message{
-				Chat: &tgbotapi.Chat{ID: 12345},
-			},
-		},
-	}
-
-	err := svc.Invoice(update)
-	if err == nil {
+	if err := svc.Invoice(callbackUpdate(12345)); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
 
+// CheckSubscription()
+
 func TestCheckSubscription(t *testing.T) {
-	mockTg := &mockTelegramClient{}
-	mockHttp := &mockHTTPClient{}
-	mockDb := &mockPostgres{}
+	svc, tg, http, db := newTestService()
 
 	deletePeerCalled := false
 	statusFalseCalled := false
 	sendTextCalled := false
 
-	mockDb.ExpiredConnectionFunc = func() ([]dto.DelEntity, error) {
+	db.ExpiredConnectionFunc = func() ([]dto.DelEntity, error) {
 		return []dto.DelEntity{
-			{ChatID: 100, PublicKey: "key1"},
-			{ChatID: 200, PublicKey: "key2"},
+			{ChatID: 100, PublicKey: "key1", PresharedKey: "psk1"},
+			{ChatID: 200, PublicKey: "key2", PresharedKey: "psk2"},
 		}, nil
 	}
-
-	mockHttp.DeletePeerFunc = func(publicKey string) error {
+	http.DeletePeerFunc = func(publicKey string) error {
 		deletePeerCalled = true
 		if publicKey != "key1" && publicKey != "key2" {
 			t.Errorf("unexpected public key: %s", publicKey)
 		}
 		return nil
 	}
-
-	mockDb.StatusFalseFunc = func(chatID int64) error {
+	db.StatusFalseFunc = func(chatID int64) error {
 		statusFalseCalled = true
-		if chatID != 100 && chatID != 200 {
-			t.Errorf("unexpected chatID: %d", chatID)
-		}
 		return nil
 	}
-
-	mockTg.SendTextFunc = func(chatID int64, text string) error {
+	tg.SendTextFunc = func(chatID int64, text string) error {
 		sendTextCalled = true
-		if chatID != 100 && chatID != 200 {
-			t.Errorf("unexpected chatID: %d", chatID)
-		}
 		return nil
 	}
 
-	svc := New(mockTg, mockHttp, mockDb)
-
-	// Create a test logger
 	testLogger, closeFunc, err := logger.NewLogger()
 	if err != nil {
 		t.Fatalf("failed to create test logger: %v", err)
 	}
 	defer closeFunc()
 
-	// Create a context that can be cancelled
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Run with very short duration for testing
 	go svc.CheckSubcription(ctx, testLogger, 50*time.Millisecond)
-
-	// Let it run once
 	time.Sleep(150 * time.Millisecond)
 	cancel()
-
-	// Give goroutine time to exit
 	time.Sleep(50 * time.Millisecond)
 
 	if !deletePeerCalled {

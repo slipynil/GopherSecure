@@ -27,10 +27,12 @@ type postgres interface {
 	SuccessfulPaymentStatus(payload string) error
 
 	// peers methods
-	NewConnection(chatID int64, expires_at time.Time) error
-	SaveKey(chatID int64, publicKey string) error
+	NewConnection(chatID int64, expiresAt time.Time) (int, error)
+	DeleteConnection(chatID int64) error
+	RenewConnection(chatID int64, expiresAt time.Time) error
+	GetPeer(chatID int64) (publicKey, presharedKey string, err error)
+	SaveKeys(chatID int64, pubKey, psk string) error
 	ExpiredConnection() ([]dto.DelEntity, error)
-	GetHostID(chatID int64) (int, error)
 }
 
 type telegramClient interface {

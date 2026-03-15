@@ -19,6 +19,15 @@ func (resp *Response) GetKey() string {
 	return ""
 }
 
+func (resp *Response) GetPresharedKey() string {
+	if dataMap, ok := resp.Data.(map[string]any); ok {
+		if psk, ok := dataMap["preshared_key"].(string); ok {
+			return psk
+		}
+	}
+	return ""
+}
+
 type AddPeerRequest struct {
 	ID              int64  `json:"id"`
 	VirtualEndpoint string `json:"virtual_endpoint"`
