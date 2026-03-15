@@ -3,4 +3,5 @@ services/awg/data/*
 services/awg/.claude
 services/telegram/.env
 services/telegram/data/*
+services/telegram/internal/service/logs
 services/telegram/logs/*
