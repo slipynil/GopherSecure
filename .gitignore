@@ -1,5 +1,6 @@
 services/awg/.env
 services/awg/data/*
+services/awg/.claude
 services/telegram/.env
 services/telegram/data/*
 services/telegram/logs/*
