@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"telegram-service/internal/dto"
+	"testing"
 )
 
 func TestNew(t *testing.T) {

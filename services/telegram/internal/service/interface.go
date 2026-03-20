@@ -1,3 +1,4 @@
+// Package service предоставляет основную бизнес-логику для управления VPN подписками и взаимодействием с клиентами через Telegram.
 package service
 
 import (
@@ -8,6 +9,8 @@ import (
 	"telegram-service/internal/dto"
 )
 
+// postgres определяет интерфейс для доступа к базе данных PostgreSQL.
+// Методы интерфейса покрывают операции с клиентами, платежами и подключениями WireGuard.
 type postgres interface {
 	// postgres methods
 	Close() error
@@ -33,6 +36,8 @@ type postgres interface {
 	GetHostID(chatID int64) (int, error)
 }
 
+// telegramClient определяет интерфейс для взаимодействия с Telegram Bot API.
+// Методы интерфейса покрывают отправку сообщений, управление меню и обработку платежей.
 type telegramClient interface {
 	// Chan возвращает канал обновлений (от tgbotapi.UpdatesChannel)
 	Chan() tgbotapi.UpdatesChannel
@@ -46,28 +51,32 @@ type telegramClient interface {
 	SendText(chatID int64, text string) error
 	// SendFile отправляет файл (конфиг) пользователю
 	SendFile(chatID int64, buffer []byte) error
-	// создает кнопку оплаты
+	// CreateAndSendInvoice создает кнопку оплаты.
 	CreateAndSendInvoice(chatID int64, payload string) error
-	// запрос перед оплатой
-	// на него нужно ответить в течение 10 секунд
+	// PreCheckoutQuery обрабатывает запрос перед оплатой.
+	// На него нужно ответить в течение 10 секунд.
 	PreCheckoutQuery(update tgbotapi.Update) error
-	// handler, успешная оплата
-	// отправляет успешный результат пользователю
+	// HandleSuccessfulPayment обрабатывает успешный платеж и отправляет результат пользователю.
 	HandleSuccessfulPayment(update tgbotapi.Update) (*dto.PaymentHandler, error)
 }
 
+// httpClient определяет интерфейс для взаимодействия с HTTP API сервиса AWG.
+// Методы интерфейса покрывают управление WireGuard пирами и получение конфигураций.
 type httpClient interface {
 	AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error)
 	DeletePeer(publicKey string) error
 	DownloadConfFile(telegramID int64) ([]byte, error)
 }
 
+// service представляет основную сервисную структуру, которая координирует взаимодействие
+// между Telegram клиентом, HTTP клиентом и базой данных.
 type service struct {
 	telegram   telegramClient
 	httpClient httpClient
 	postgres   postgres
 }
 
+// New создает новый экземпляр [service] с предоставленными телеграм клиентом, HTTP клиентом и базой данных.
 func New(telegram telegramClient, httpClient httpClient, postgres postgres) service {
 
 	return service{

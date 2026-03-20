@@ -6,6 +6,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// CreateAndSendInvoice создает и отправляет счет на оплату пользователю.
+// Стоимость подписки составляет 20000 копеек (200 рублей) на 30 дней.
 func (t *Telegram) CreateAndSendInvoice(chatID int64, payload string) error {
 
 	title := "Оплата услуги"
@@ -27,8 +29,8 @@ func (t *Telegram) CreateAndSendInvoice(chatID int64, payload string) error {
 	return err
 }
 
-// запрос перед оплатой
-// на него нужно ответить в течение 10 секунд
+// PreCheckoutQuery обрабатывает запрос до оплаты от Telegram.
+// Требует ответа в течение 10 секунд и подтверждает готовность принять платеж.
 func (t *Telegram) PreCheckoutQuery(update tgbotapi.Update) error {
 	query := update.PreCheckoutQuery
 	// Говорим Телеграму, что готовы принять платеж
@@ -42,7 +44,8 @@ func (t *Telegram) PreCheckoutQuery(update tgbotapi.Update) error {
 	return err
 }
 
-// обработка, успешная оплата
+// HandleSuccessfulPayment обрабатывает успешный платеж и отправляет подтверждение пользователю.
+// Возвращает структуру с деталями платежа для дальнейшей обработки.
 func (t *Telegram) HandleSuccessfulPayment(update tgbotapi.Update) (*dto.PaymentHandler, error) {
 	payment := update.Message.SuccessfulPayment
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Оплата прошла успешно! Услуга активирована.")

@@ -144,3 +144,13 @@ This service is part of a larger VPN infrastructure:
 - **AWG service** — Manages WireGuard peer configurations; HTTP API at `HTTP_URL`
 - **Parent project** — Located at `/home/user/GitProjects/vpn/`
 - **Shared DTO types** — Check `../awg/internal/transport/dto/` if cross-service compatibility needed
+
+## Claude Code Scope
+
+When working in this repository:
+
+- Focus ONLY on these directories:
+  - ./internal
+  - ./cmd
+- Do NOT read or analyze files outside these directories unless I explicitly mention a file path.
+- Ignore build artifacts, logs, and unrelated files in other directories.

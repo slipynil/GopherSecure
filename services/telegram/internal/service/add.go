@@ -7,6 +7,10 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// add добавляет новое подключение WireGuard для пользователя.
+// Если price равен 20000 копеек, создает подписку на 30 дней, иначе на 24 часа.
+// Функция создает запись в БД, добавляет пира на AWG сервисе и отправляет конфиг файл пользователю.
+// В случае ошибки на любом этапе возвращает описание проблемы.
 func (s *service) add(chatID int64, price int) error {
 	now := time.Now()
 	duration := 24 * time.Hour
@@ -38,6 +42,9 @@ func (s *service) add(chatID int64, price int) error {
 	return s.telegram.SendFile(chatID, bufer)
 }
 
+// getConfFile отправляет файл конфигурации пользователю.
+// Предварительно проверяет, имеет ли пользователь активную подписку.
+// Если подписка отсутствует, отправляет уведомление об этом.
 func (s *service) getConfFile(u tgbotapi.Update) error {
 	chatID := u.CallbackQuery.Message.Chat.ID
 	if !s.postgres.CheckStatus(chatID) {

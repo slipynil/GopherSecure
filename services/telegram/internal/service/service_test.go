@@ -14,19 +14,19 @@ import (
 
 // Mock implementations
 type mockPostgres struct {
-	AddClientFunc              func(username string, chatID int64) error
-	TestedFunc                 func(chatID int64) error
-	IsTestedFunc               func(chatID int64) bool
-	StatusTrueFunc             func(chatID int64) error
-	StatusFalseFunc            func(chatID int64) error
-	CheckStatusFunc            func(chatID int64) bool
-	NewPaymentFunc             func(chatID int64, payload string) error
+	AddClientFunc               func(username string, chatID int64) error
+	TestedFunc                  func(chatID int64) error
+	IsTestedFunc                func(chatID int64) bool
+	StatusTrueFunc              func(chatID int64) error
+	StatusFalseFunc             func(chatID int64) error
+	CheckStatusFunc             func(chatID int64) bool
+	NewPaymentFunc              func(chatID int64, payload string) error
 	SuccessfulPaymentStatusFunc func(payload string) error
-	NewConnectionFunc          func(chatID int64, expires_at time.Time) error
-	SaveKeyFunc                func(chatID int64, publicKey string) error
-	ExpiredConnectionFunc      func() ([]dto.DelEntity, error)
-	GetHostIDFunc              func(chatID int64) (int, error)
-	CloseFunc                  func() error
+	NewConnectionFunc           func(chatID int64, expires_at time.Time) error
+	SaveKeyFunc                 func(chatID int64, publicKey string) error
+	ExpiredConnectionFunc       func() ([]dto.DelEntity, error)
+	GetHostIDFunc               func(chatID int64) (int, error)
+	CloseFunc                   func() error
 }
 
 func (m *mockPostgres) AddClient(username string, chatID int64) error {
@@ -121,14 +121,14 @@ func (m *mockPostgres) Close() error {
 }
 
 type mockTelegramClient struct {
-	ChanFunc                   func() tgbotapi.UpdatesChannel
-	MenuFunc                   func(chatID int64) error
-	UpdateMainMenuFunc         func(update tgbotapi.Update) error
-	UpdateSendTextFunc         func(update tgbotapi.Update, text string) error
-	SendTextFunc               func(chatID int64, text string) error
-	SendFileFunc               func(chatID int64, buffer []byte) error
-	CreateAndSendInvoiceFunc   func(chatID int64, payload string) error
-	PreCheckoutQueryFunc       func(update tgbotapi.Update) error
+	ChanFunc                    func() tgbotapi.UpdatesChannel
+	MenuFunc                    func(chatID int64) error
+	UpdateMainMenuFunc          func(update tgbotapi.Update) error
+	UpdateSendTextFunc          func(update tgbotapi.Update, text string) error
+	SendTextFunc                func(chatID int64, text string) error
+	SendFileFunc                func(chatID int64, buffer []byte) error
+	CreateAndSendInvoiceFunc    func(chatID int64, payload string) error
+	PreCheckoutQueryFunc        func(update tgbotapi.Update) error
 	HandleSuccessfulPaymentFunc func(update tgbotapi.Update) (*dto.PaymentHandler, error)
 }
 

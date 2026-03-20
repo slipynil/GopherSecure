@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// NewConnection создает новую запись в таблице peer с chat_id и expires_at.
 func (p *Postgres) NewConnection(chatID int64, expires_at time.Time) error {
 	sqlRaw := `
 	INSERT INTO peer (chat_id, expires_at)
@@ -14,6 +15,7 @@ func (p *Postgres) NewConnection(chatID int64, expires_at time.Time) error {
 	return err
 }
 
+// GetHostID возвращает host_id peer'а по chat_id.
 func (p *Postgres) GetHostID(chatID int64) (int, error) {
 	sqlRaw := `
 	SELECT host_id FROM peer
@@ -24,6 +26,7 @@ func (p *Postgres) GetHostID(chatID int64) (int, error) {
 	return hostID, err
 }
 
+// ExpiredConnection удаляет все peer с expires_at < NOW() и возвращает список удаленных dto.DelEntity (chat_id, public_key).
 func (p *Postgres) ExpiredConnection() ([]dto.DelEntity, error) {
 	const sqlRaw = `
 	DELETE FROM peer
@@ -56,6 +59,7 @@ func (p *Postgres) ExpiredConnection() ([]dto.DelEntity, error) {
 	return result, nil
 }
 
+// SaveKey обновляет public_key в записи peer по chat_id.
 func (p *Postgres) SaveKey(chatID int64, publicKey string) error {
 	sqlRaw := `
 	UPDATE peer

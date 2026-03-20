@@ -8,8 +8,12 @@ import (
 	"telegram-service/logger"
 )
 
+// text содержит сообщение об истечении подписки.
 const text = "Ваша подписка истекла, продлите для дальнейшего использования нашей услуги"
 
+// CheckSubcription периодически проверяет истекшие подписки с заданным интервалом duration.
+// Для каждой истекшей подписки удаляет пира на AWG сервисе, обновляет статус в БД и отправляет уведомление пользователю.
+// Функция работает до отмены контекста ctx.
 func (s *service) CheckSubcription(ctx context.Context, logger *logger.MyLogger, duration time.Duration) {
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()

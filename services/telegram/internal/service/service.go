@@ -1,3 +1,4 @@
+// Package service предоставляет основную бизнес-логику для управления VPN подписками и взаимодействием с клиентами через Telegram.
 package service
 
 import (
@@ -9,6 +10,9 @@ import (
 	"telegram-service/logger"
 )
 
+// Update запускает основной цикл обработки обновлений от Telegram.
+// Функция обрабатывает сообщения, платежи и взаимодействие пользователя с кнопками,
+// а также периодически проверяет истекшие подписки через [CheckSubcription].
 func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 
 	duration := time.Hour
