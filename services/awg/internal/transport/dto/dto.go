@@ -24,12 +24,14 @@ type DeleteResult struct {
 	User    *model.User  // deleted user (for potential rollback)
 }
 
-func CreatePeerResponse(publicKey string) Response {
+func CreatePeerResponse(publicKey, presharedKey string) Response {
 	return Response{
 		Data: struct {
-			PublicKey string `json:"public_key"`
+			PublicKey    string `json:"public_key"`
+			PresharedKey string `json:"preshared_key"`
 		}{
-			PublicKey: publicKey,
+			PublicKey:    publicKey,
+			PresharedKey: presharedKey,
 		},
 	}
 }

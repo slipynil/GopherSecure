@@ -13,38 +13,32 @@ import (
 // В случае ошибки на любом этапе возвращает описание проблемы.
 func (s *service) add(chatID int64, price int) error {
 	now := time.Now()
-	duration := 24 * time.Hour
+	duration := 2 * time.Minute
 	if price == 20000 {
-		duration = 30 * 24 * time.Hour
+		duration = 5 * time.Minute
 	}
-	date := now.Add(duration)
-
-	if err := s.postgres.NewConnection(chatID, date); err != nil {
-		return fmt.Errorf("Fail to add new entity in postgres %w", err)
-	}
+	expiresAt := now.Add(duration)
 
 	hostID, err := s.postgres.GetHostID(chatID)
 	if err != nil {
 		return fmt.Errorf("Error getting host ID: %w", err)
 	}
+
+	// Add peer to AWG and get both keys in one call
 	data, err := s.httpClient.AddPeer(hostID, true, chatID)
 	if err != nil {
 		return fmt.Errorf("Error adding peer: %w", err)
 	}
-	if err := s.postgres.SaveKey(chatID, data.GetKey()); err != nil {
-		return fmt.Errorf("failed to save public key: %w", err)
+
+	publicKey := data.GetKey()
+	presharedKey := data.GetPresharedKey()
+
+	// Save connection with all data in one database call
+	if err := s.postgres.SaveConnection(chatID, publicKey, presharedKey, expiresAt); err != nil {
+		return fmt.Errorf("failed to save connection: %w", err)
 	}
 
-	// get both keys and save preshared_key
-	keys, err := s.httpClient.GetKeys(chatID)
-	if err != nil {
-		return fmt.Errorf("failed to get keys: %w", err)
-	}
-	if err := s.postgres.SavePresharedKey(chatID, data.GetKey(), keys.PresharedKey); err != nil {
-		return fmt.Errorf("failed to save preshared_key: %w", err)
-	}
-
-	// get http response buffer of config file
+	// Download and send config file
 	bufer, err := s.httpClient.DownloadConfFile(chatID)
 	if err != nil {
 		return fmt.Errorf("Error downloading config file: %w", err)

@@ -26,7 +26,7 @@ func New(endpoint string) *client {
 // AddPeer добавляет новый WireGuard пир на AWG сервисе для пользователя с ID telegramID.
 // Параметр hostID используется для создания виртуального IP адреса формата 10.66.66.{hostID}/32.
 // Если DNS равен true, устанавливаются публичные DNS серверы 1.1.1.1 и 8.8.8.8.
-// Возвращает ответ сервера содержащий публичный ключ пира.
+// Возвращает ответ сервера содержащий оба ключа: публичный и preshared.
 func (c *client) AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 	virtualEndpoint := fmt.Sprintf("10.66.66.%d/32", hostID)
 
@@ -111,47 +111,6 @@ func (c *client) DownloadConfFile(telegramID int64) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 	return data, nil
-}
-
-// GetKeys получает оба ключа (public_key и preshared_key) для пира с ID id.
-// Возвращает структуру KeysResponse содержащую оба ключа.
-func (c *client) GetKeys(id int64) (*dto.KeysResponse, error) {
-	url := fmt.Sprintf("%s/peers/%d/keys", c.url, id)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// check status code
-	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("failed to get keys, status %d", resp.StatusCode)
-		return nil, err
-	}
-
-	// decode response
-	apiResp := dto.Response{}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if len(apiResp.Error) != 0 {
-		return nil, fmt.Errorf("api error: %s", apiResp.Error)
-	}
-
-	// extract keys from response data
-	keysResp := &dto.KeysResponse{}
-	if dataMap, ok := apiResp.Data.(map[string]interface{}); ok {
-		if pubKey, ok := dataMap["public_key"].(string); ok {
-			keysResp.PublicKey = pubKey
-		}
-		if presharedKey, ok := dataMap["preshared_key"].(string); ok {
-			keysResp.PresharedKey = presharedKey
-		}
-	}
-
-	return keysResp, nil
 }
 
 // responseDecode декодирует JSON ответ от AWG сервиса в структуру [dto.Response].

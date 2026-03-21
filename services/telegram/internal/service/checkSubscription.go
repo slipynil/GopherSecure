@@ -26,8 +26,19 @@ func (s *service) CheckSubcription(ctx context.Context, logger *logger.MyLogger,
 			data, err := s.postgres.ExpiredConnection()
 			if err != nil {
 				logger.IsErr("fail to get expired connections", err)
+				continue
 			}
+
+			if len(data) > 0 {
+				logger.Logger.Info(fmt.Sprintf("found %d expired connections", len(data)))
+			}
+
 			for _, r := range data {
+				if r.PublicKey == "" {
+					logger.Logger.Info(fmt.Sprintf("skipping peer deletion - PublicKey is empty for ChatID: %d", r.ChatID))
+					continue
+				}
+
 				if err := s.httpClient.DeletePeer(r.PublicKey); err != nil {
 					logger.IsErr("fail to delete peer", err)
 				}
@@ -40,7 +51,6 @@ func (s *service) CheckSubcription(ctx context.Context, logger *logger.MyLogger,
 				msg := fmt.Sprintf("у пользователя %d закончилась подписка", r.ChatID)
 				logger.Logger.Info(msg)
 			}
-			logger.Logger.Info("проверка подписок завершена")
 		}
 	}
 }

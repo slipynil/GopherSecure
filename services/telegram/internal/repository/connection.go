@@ -5,13 +5,16 @@ import (
 	"time"
 )
 
-// NewConnection создает новую запись в таблице peer с chat_id и expires_at.
-func (p *Postgres) NewConnection(chatID int64, expires_at time.Time) error {
+// SaveConnection сохраняет полную информацию о подключении пира в одной операции.
+// Удаляет старые записи для этого chat_id и создает новую с обоими ключами и сроком истечения.
+func (p *Postgres) SaveConnection(chatID int64, publicKey, presharedKey string, expiresAt time.Time) error {
 	sqlRaw := `
-	INSERT INTO peer (chat_id, expires_at)
-	VALUES ($1, $2);
+	DELETE FROM peer WHERE chat_id = $1;
+
+	INSERT INTO peer (chat_id, public_key, preshared_key, expires_at)
+	VALUES ($1, $2, $3, $4);
 	`
-	_, err := p.conn.Exec(p.ctx, sqlRaw, chatID, expires_at)
+	_, err := p.conn.Exec(p.ctx, sqlRaw, chatID, publicKey, presharedKey, expiresAt)
 	return err
 }
 
@@ -59,36 +62,3 @@ func (p *Postgres) ExpiredConnection() ([]dto.DelEntity, error) {
 	return result, nil
 }
 
-// SaveKey обновляет public_key в записи peer по chat_id.
-func (p *Postgres) SaveKey(chatID int64, publicKey string) error {
-	sqlRaw := `
-	UPDATE peer
-	SET public_key = $2
-	WHERE chat_id = $1;
-	`
-	_, err := p.conn.Exec(p.ctx, sqlRaw, chatID, publicKey)
-	return err
-}
-
-// SavePresharedKey сохраняет preshared_key в базу по chat_id и public_key.
-func (p *Postgres) SavePresharedKey(chatID int64, publicKey string, presharedKey string) error {
-	sqlRaw := `
-	UPDATE peer
-	SET preshared_key = $3
-	WHERE chat_id = $1 AND public_key = $2;
-	`
-	_, err := p.conn.Exec(p.ctx, sqlRaw, chatID, publicKey, presharedKey)
-	return err
-}
-
-// GetPresharedKey получает preshared_key из базы по chat_id и public_key.
-func (p *Postgres) GetPresharedKey(chatID int64, publicKey string) (string, error) {
-	sqlRaw := `
-	SELECT preshared_key
-	FROM peer
-	WHERE chat_id = $1 AND public_key = $2;
-	`
-	var presharedKey string
-	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID, publicKey).Scan(&presharedKey)
-	return presharedKey, err
-}

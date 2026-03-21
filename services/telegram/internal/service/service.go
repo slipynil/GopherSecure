@@ -16,14 +16,16 @@ import (
 func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 
 	logger.Logger.Info("service is running")
-	duration := time.Hour
+	duration := time.Minute
 	go s.CheckSubcription(ctx, logger, duration)
 
 	for u := range s.telegram.Chan() {
 		// если есть сигнал об оплате
 		if u.PreCheckoutQuery != nil {
+
 			err := s.telegram.PreCheckoutQuery(u)
 			logger.IsErr("failed to answer pre_checkout_query", err)
+
 			// если структура message не пустая и является командой
 		} else if u.Message != nil {
 			chat := u.Message.Chat
@@ -31,12 +33,16 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 				if dto, err := s.telegram.HandleSuccessfulPayment(u); err != nil {
 					logger.IsErr("payment canceled", err)
 				} else {
+
 					err := s.postgres.SuccessfulPaymentStatus(dto.InvoicePayload)
 					logger.IsErr("failed to change true status on payment", err)
+
 					err = s.postgres.StatusTrue(chat.ID)
 					logger.IsErr("failed to change true status on client", err)
+
 					err = s.add(chat.ID, dto.TotalAmount)
 					logger.IsErr("failed to add peer", err)
+
 					if err == nil {
 						msg := fmt.Sprintf("пользователь %s купил подписку за %v %s", chat.UserName, dto.TotalAmount/100, dto.Currency)
 						logger.Logger.Info(msg)
@@ -50,6 +56,7 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 				s.telegram.Menu(chat.ID)
 
 			case "start":
+
 				err := s.postgres.AddClient(chat.UserName, chat.ID)
 				if err != nil {
 					logger.IsErr("failed to add client to postgres", err)
