@@ -21,7 +21,7 @@ func (s *service) Invoice(u tgbotapi.Update) error {
 	}
 	// create new invoice in telegram
 	if err := s.telegram.CreateAndSendInvoice(chatID, payload); err != nil {
-		return fmt.Errorf("fail to create and send invoice for telegram client")
+		return fmt.Errorf("fail to create and send invoice for telegram client: %w", err)
 	}
 	return nil
 }

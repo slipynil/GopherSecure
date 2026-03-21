@@ -15,6 +15,7 @@ import (
 // а также периодически проверяет истекшие подписки через [CheckSubcription].
 func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 
+	logger.Logger.Info("service is running")
 	duration := time.Hour
 	go s.CheckSubcription(ctx, logger, duration)
 
