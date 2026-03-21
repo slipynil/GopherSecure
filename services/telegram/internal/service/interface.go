@@ -19,11 +19,11 @@ type postgres interface {
 	AddClient(username string, chatID int64) error
 
 	Tested(chatID int64) error
-	IsTested(chatID int64) bool
+	IsTested(chatID int64) (bool, error)
 
 	StatusTrue(chatID int64) error
 	StatusFalse(chatID int64) error
-	CheckStatus(chatID int64) bool
+	CheckStatus(chatID int64) (bool, error)
 
 	// payments methods
 	NewPayment(chatID int64, payload string) error
@@ -32,6 +32,8 @@ type postgres interface {
 	// peers methods
 	NewConnection(chatID int64, expires_at time.Time) error
 	SaveKey(chatID int64, publicKey string) error
+	SavePresharedKey(chatID int64, publicKey string, presharedKey string) error
+	GetPresharedKey(chatID int64, publicKey string) (string, error)
 	ExpiredConnection() ([]dto.DelEntity, error)
 	GetHostID(chatID int64) (int, error)
 }
@@ -66,6 +68,7 @@ type httpClient interface {
 	AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error)
 	DeletePeer(publicKey string) error
 	DownloadConfFile(telegramID int64) ([]byte, error)
+	GetKeys(id int64) (*dto.KeysResponse, error)
 }
 
 // service представляет основную сервисную структуру, которая координирует взаимодействие

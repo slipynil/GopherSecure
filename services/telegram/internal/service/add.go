@@ -34,6 +34,16 @@ func (s *service) add(chatID int64, price int) error {
 	if err := s.postgres.SaveKey(chatID, data.GetKey()); err != nil {
 		return fmt.Errorf("failed to save public key: %w", err)
 	}
+
+	// get both keys and save preshared_key
+	keys, err := s.httpClient.GetKeys(chatID)
+	if err != nil {
+		return fmt.Errorf("failed to get keys: %w", err)
+	}
+	if err := s.postgres.SavePresharedKey(chatID, data.GetKey(), keys.PresharedKey); err != nil {
+		return fmt.Errorf("failed to save preshared_key: %w", err)
+	}
+
 	// get http response buffer of config file
 	bufer, err := s.httpClient.DownloadConfFile(chatID)
 	if err != nil {
@@ -47,7 +57,12 @@ func (s *service) add(chatID int64, price int) error {
 // Если подписка отсутствует, отправляет уведомление об этом.
 func (s *service) getConfFile(u tgbotapi.Update) error {
 	chatID := u.CallbackQuery.Message.Chat.ID
-	if !s.postgres.CheckStatus(chatID) {
+	status, err := s.postgres.CheckStatus(chatID)
+	if err != nil {
+		s.telegram.UpdateSendText(u, "Ошибка проверки статуса")
+		return fmt.Errorf("failed to check status: %w", err)
+	}
+	if !status {
 		s.telegram.UpdateSendText(u, "у вас нет подписки")
 		return nil
 	}

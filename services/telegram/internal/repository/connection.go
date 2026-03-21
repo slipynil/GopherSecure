@@ -69,3 +69,26 @@ func (p *Postgres) SaveKey(chatID int64, publicKey string) error {
 	_, err := p.conn.Exec(p.ctx, sqlRaw, chatID, publicKey)
 	return err
 }
+
+// SavePresharedKey сохраняет preshared_key в базу по chat_id и public_key.
+func (p *Postgres) SavePresharedKey(chatID int64, publicKey string, presharedKey string) error {
+	sqlRaw := `
+	UPDATE peer
+	SET preshared_key = $3
+	WHERE chat_id = $1 AND public_key = $2;
+	`
+	_, err := p.conn.Exec(p.ctx, sqlRaw, chatID, publicKey, presharedKey)
+	return err
+}
+
+// GetPresharedKey получает preshared_key из базы по chat_id и public_key.
+func (p *Postgres) GetPresharedKey(chatID int64, publicKey string) (string, error) {
+	sqlRaw := `
+	SELECT preshared_key
+	FROM peer
+	WHERE chat_id = $1 AND public_key = $2;
+	`
+	var presharedKey string
+	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID, publicKey).Scan(&presharedKey)
+	return presharedKey, err
+}

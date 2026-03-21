@@ -86,19 +86,28 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 				logger.IsErr("", err)
 
 			case "оплатить":
-				if s.postgres.CheckStatus(chat.ID) {
+				status, err := s.postgres.CheckStatus(chat.ID)
+				if err != nil {
+					logger.IsErr("failed to check status", err)
+					err := s.telegram.UpdateSendText(u, "Ошибка проверки статуса")
+					logger.IsErr("", err)
+				} else if status {
 					err := s.telegram.UpdateSendText(u, "Вы уже оплатили")
 					logger.IsErr("", err)
 				} else {
 					err := s.Invoice(u)
 					if err != nil {
 						logger.IsErr("failed to create invoice", err)
-					} else {
 					}
 				}
 
 			case "протестировать":
-				if s.postgres.IsTested(chat.ID) {
+				isTested, err := s.postgres.IsTested(chat.ID)
+				if err != nil {
+					logger.IsErr("failed to check if tested", err)
+					err := s.telegram.UpdateSendText(u, "Ошибка проверки статуса")
+					logger.IsErr("", err)
+				} else if isTested {
 					err := s.telegram.UpdateSendText(u, "У вас уже был тестовый доступ")
 					logger.IsErr("", err)
 				} else {

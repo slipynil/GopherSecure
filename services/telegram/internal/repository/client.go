@@ -37,8 +37,7 @@ func (p *Postgres) StatusFalse(chatID int64) error {
 }
 
 // CheckStatus возвращает текущий status клиента по chat_id.
-// Паникует при ошибке запроса или отсутствии записи.
-func (p *Postgres) CheckStatus(chatID int64) bool {
+func (p *Postgres) CheckStatus(chatID int64) (bool, error) {
 	sqlRaw := `
 	SELECT status
 	FROM client
@@ -48,10 +47,10 @@ func (p *Postgres) CheckStatus(chatID int64) bool {
 	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&status)
 
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 
-	return status
+	return status, nil
 }
 
 // Tested устанавливает is_tested = true для клиента по chat_id.
@@ -67,8 +66,7 @@ func (p *Postgres) Tested(chatID int64) error {
 }
 
 // IsTested возвращает значение is_tested клиента по chat_id.
-// Паникует при ошибке запроса или отсутствии записи.
-func (p *Postgres) IsTested(chatID int64) bool {
+func (p *Postgres) IsTested(chatID int64) (bool, error) {
 	sqlRaw := `
 	SELECT is_tested
 	FROM client
@@ -78,8 +76,8 @@ func (p *Postgres) IsTested(chatID int64) bool {
 	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&isTested)
 
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 
-	return isTested
+	return isTested, nil
 }

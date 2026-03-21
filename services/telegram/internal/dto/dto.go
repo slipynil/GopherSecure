@@ -39,6 +39,11 @@ type PaymentHandler struct {
 	Currency       string
 }
 
+type KeysResponse struct {
+	PublicKey    string `json:"public_key"`
+	PresharedKey string `json:"preshared_key"`
+}
+
 func DecodeCallbackData(raw string) (*CallbackData, error) {
 	bs, err := base64.RawURLEncoding.DecodeString(raw)
 	if err != nil {
