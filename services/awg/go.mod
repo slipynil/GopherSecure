@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/gorilla/mux v1.8.1
-	github.com/slipynil/awgctrl-go v1.1.1
+	github.com/slipynil/awgctrl-go v1.2.0
 )
 
 replace github.com/slipynil/awgctrl-go => /home/user/GitProjects/awgctrl-go
