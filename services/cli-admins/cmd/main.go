@@ -10,12 +10,11 @@ import (
 	"cli-admins/internal/client"
 )
 
+var ldflagsAddr = "0.0.0.0:8080"
+
 func main() {
 	// Получить ADDRESS из переменной окружения или использовать default
-	address := os.Getenv("ADDRESS")
-	if address == "" {
-		address = "localhost:8080"
-	}
+	address := ldflagsAddr
 
 	promoClient := client.NewPromoClient(address)
 
