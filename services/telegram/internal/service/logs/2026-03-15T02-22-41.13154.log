@@ -1,3 +1,0 @@
-2026-03-15T02-22-41.18218	INFO	service/checkSubscription.go:29	у пользователя 100 закончилась подписка
-2026-03-15T02-22-41.18233	INFO	service/checkSubscription.go:29	у пользователя 200 закончилась подписка
-2026-03-15T02-22-41.18235	INFO	service/checkSubscription.go:31	проверка подписок завершена

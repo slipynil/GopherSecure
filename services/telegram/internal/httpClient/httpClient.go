@@ -109,8 +109,16 @@ func (c *client) RestorePeer(publicKey, presharedKey, socket string) error {
 	}
 	defer resp.Body.Close()
 
-	_, err = responseDecode(resp)
-	return err
+	// Проверяем статус ответа, не пытаясь парсить JSON
+	// (удалённый AWG может ещё не быть обновлён)
+	if resp.StatusCode != http.StatusOK {
+		var errResp dto.Response
+		if jsonErr := json.NewDecoder(resp.Body).Decode(&errResp); jsonErr == nil && errResp.Error != "" {
+			return fmt.Errorf("restore peer failed (%d): %s", resp.StatusCode, errResp.Error)
+		}
+		return fmt.Errorf("restore peer failed with status %d", resp.StatusCode)
+	}
+	return nil
 }
 
 // DownloadConfFile загружает конфигурационный файл WireGuard для пользователя с ID telegramID.
