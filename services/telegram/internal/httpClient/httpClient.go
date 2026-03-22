@@ -60,6 +60,7 @@ func (c *client) AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response,
 
 // DeletePeer удаляет WireGuard пир с указанным publicKey с AWG сервиса.
 // В случае ошибки возвращает описание проблемы.
+// 404 считается успехом, так как пир может быть уже удалён.
 func (c *client) DeletePeer(publicKey string) error {
 
 	url := fmt.Sprintf("%s/peers", c.url)
@@ -82,6 +83,11 @@ func (c *client) DeletePeer(publicKey string) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	// 404 считается успехом — пир уже удалён
+	if resp.StatusCode == http.StatusNotFound {
+		return nil
+	}
 
 	_, err = responseDecode(resp)
 	return err
