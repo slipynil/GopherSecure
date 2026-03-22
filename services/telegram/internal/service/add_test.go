@@ -50,6 +50,12 @@ func (m *mockPostgres) SaveConnection(hostID int, publicKey, presharedKey string
 	return m.saveConnectionErr
 }
 
+func (m *mockPostgres) DeleteConnection(hostID int) error { return nil }
+func (m *mockPostgres) MarkExpired(hostID int) error      { return nil }
+func (m *mockPostgres) GetConnection(chatID int64) (*dto.DelEntity, error) {
+	return nil, fmt.Errorf("no existing connection")
+}
+
 type mockHTTPClient struct {
 	addPeerHostID    int
 	addPeerChatID    int64
@@ -65,7 +71,8 @@ func (m *mockHTTPClient) AddPeer(hostID int, dns bool, telegramID int64) (*dto.R
 	return m.addPeerResp, m.addPeerErr
 }
 
-func (m *mockHTTPClient) DeletePeer(publicKey string) error { return nil }
+func (m *mockHTTPClient) DeletePeer(publicKey string) error                       { return nil }
+func (m *mockHTTPClient) RestorePeer(publicKey, presharedKey, socket string) error { return nil }
 
 func (m *mockHTTPClient) DownloadConfFile(id int64) ([]byte, error) {
 	return m.downloadConfResp, m.downloadConfErr
@@ -206,6 +213,72 @@ func TestAdd_FileDelivered(t *testing.T) {
 	if string(tg.sentFileBytes) != "wireguard-config-content" {
 		t.Errorf("file content=%q, want %q", tg.sentFileBytes, "wireguard-config-content")
 	}
+}
+
+// TestAdd_RenewalUsesExistingKeys checks that when renewing, existing keys are used
+// and AddPeer is NOT called (RestorePeer is called instead).
+func TestAdd_RenewalUsesExistingKeys(t *testing.T) {
+	const chatID = int64(6741297026)
+	const hostID = 4
+
+	existingKeys := &dto.DelEntity{
+		HostID:       hostID,
+		ChatID:       chatID,
+		PublicKey:    "existing-pub-key",
+		PresharedKey: "existing-pre-key",
+	}
+
+	pg := &mockPostgresWithExisting{
+		mockPostgres:    mockPostgres{newConnectionHostID: 99}, // should NOT be used
+		existingConn:    existingKeys,
+	}
+	httpClient := &mockHTTPClientTracked{}
+	tg := &mockTelegram{}
+
+	svc := New(tg, httpClient, pg)
+	if err := svc.add(chatID, 0); err != nil {
+		t.Fatalf("add() error: %v", err)
+	}
+
+	if httpClient.addPeerCalled {
+		t.Error("AddPeer should NOT be called on renewal — would generate new keys")
+	}
+	if !httpClient.restorePeerCalled {
+		t.Error("RestorePeer should be called on renewal")
+	}
+	if httpClient.restoredPublicKey != "existing-pub-key" {
+		t.Errorf("RestorePeer got publicKey=%q, want existing-pub-key", httpClient.restoredPublicKey)
+	}
+}
+
+type mockPostgresWithExisting struct {
+	mockPostgres
+	existingConn *dto.DelEntity
+}
+
+func (m *mockPostgresWithExisting) GetConnection(chatID int64) (*dto.DelEntity, error) {
+	if m.existingConn != nil {
+		return m.existingConn, nil
+	}
+	return nil, fmt.Errorf("not found")
+}
+
+type mockHTTPClientTracked struct {
+	mockHTTPClient
+	addPeerCalled     bool
+	restorePeerCalled bool
+	restoredPublicKey string
+}
+
+func (m *mockHTTPClientTracked) AddPeer(hostID int, dns bool, telegramID int64) (*dto.Response, error) {
+	m.addPeerCalled = true
+	return responseWithKeys("new-key", "new-pre"), nil
+}
+
+func (m *mockHTTPClientTracked) RestorePeer(publicKey, presharedKey, socket string) error {
+	m.restorePeerCalled = true
+	m.restoredPublicKey = publicKey
+	return nil
 }
 
 // --- helpers ---

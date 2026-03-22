@@ -32,6 +32,9 @@ type postgres interface {
 	// peers methods
 	NewConnection(chatID int64) (int, error)
 	SaveConnection(hostID int, publicKey, presharedKey string, expiresAt time.Time) error
+	DeleteConnection(hostID int) error
+	MarkExpired(hostID int) error
+	GetConnection(chatID int64) (*dto.DelEntity, error)
 	ExpiredConnection() ([]dto.DelEntity, error)
 	GetHostID(chatID int64) (int, error)
 }
@@ -65,6 +68,7 @@ type telegramClient interface {
 type httpClient interface {
 	AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error)
 	DeletePeer(publicKey string) error
+	RestorePeer(publicKey, presharedKey, socket string) error
 	DownloadConfFile(telegramID int64) ([]byte, error)
 }
 

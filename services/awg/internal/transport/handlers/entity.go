@@ -11,6 +11,7 @@ import (
 type awg interface {
 	AddPeer(fileName, virtualEndpoint, DNS string) (string, *awgctrlgo.Peer, error)
 	DeletePeer(peerPublicKeyStr string) error
+	RestorePeer(publicKey, presharedKey, socket string) error
 }
 
 type repository interface {

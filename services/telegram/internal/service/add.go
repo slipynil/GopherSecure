@@ -19,30 +19,37 @@ func (s *service) add(chatID int64, price int) error {
 	}
 	expiresAt := now.Add(duration)
 
-	// Create placeholder peer record to get host_id
-	hostID, err := s.postgres.NewConnection(chatID)
-	if err != nil {
-		return fmt.Errorf("failed to create connection placeholder: %w", err)
-	}
-
-	// Add peer to AWG and get both keys in one call
-	data, err := s.httpClient.AddPeer(hostID, true, chatID)
-	if err != nil {
-		return fmt.Errorf("Error adding peer: %w", err)
-	}
-
-	publicKey := data.GetKey()
-	presharedKey := data.GetPresharedKey()
-
-	// Save connection with all data in one database call, using host_id for precise update
-	if err := s.postgres.SaveConnection(hostID, publicKey, presharedKey, expiresAt); err != nil {
-		return fmt.Errorf("failed to save connection: %w", err)
+	// Check if peer already exists with keys (renewal case)
+	existing, err := s.postgres.GetConnection(chatID)
+	if err == nil && existing.PublicKey != "" {
+		// Renewal: restore existing peer in WireGuard with the same keys
+		hostID := existing.HostID
+		socket := fmt.Sprintf("10.66.66.%d/32", hostID)
+		if err := s.httpClient.RestorePeer(existing.PublicKey, existing.PresharedKey, socket); err != nil {
+			return fmt.Errorf("failed to restore peer: %w", err)
+		}
+		if err := s.postgres.SaveConnection(hostID, existing.PublicKey, existing.PresharedKey, expiresAt); err != nil {
+			return fmt.Errorf("failed to update connection expiry: %w", err)
+		}
+	} else {
+		// New peer: create placeholder, add to AWG, save keys
+		hostID, err := s.postgres.NewConnection(chatID)
+		if err != nil {
+			return fmt.Errorf("failed to create connection: %w", err)
+		}
+		data, err := s.httpClient.AddPeer(hostID, true, chatID)
+		if err != nil {
+			return fmt.Errorf("failed to add peer: %w", err)
+		}
+		if err := s.postgres.SaveConnection(hostID, data.GetKey(), data.GetPresharedKey(), expiresAt); err != nil {
+			return fmt.Errorf("failed to save connection: %w", err)
+		}
 	}
 
 	// Download and send config file
 	bufer, err := s.httpClient.DownloadConfFile(chatID)
 	if err != nil {
-		return fmt.Errorf("Error downloading config file: %w", err)
+		return fmt.Errorf("failed to download config file: %w", err)
 	}
 	return s.telegram.SendFile(chatID, bufer)
 }

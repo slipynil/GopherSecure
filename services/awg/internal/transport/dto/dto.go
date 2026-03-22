@@ -17,6 +17,12 @@ type DelRequest struct {
 	PublicKey string `json:"public_key"`
 }
 
+type RestoreRequest struct {
+	PublicKey    string `json:"public_key"`
+	PresharedKey string `json:"preshared_key"`
+	Socket       string `json:"socket"`
+}
+
 // DeleteResult contains information about the deletion operation result
 type DeleteResult struct {
 	Found   bool         // was the user found

@@ -1,6 +1,8 @@
 package dto
 
 type DelEntity struct {
-	ChatID    int64
-	PublicKey string
+	HostID       int
+	ChatID       int64
+	PublicKey    string
+	PresharedKey string
 }

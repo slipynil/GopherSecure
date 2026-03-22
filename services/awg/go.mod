@@ -7,6 +7,8 @@ require (
 	github.com/slipynil/awgctrl-go v1.1.1
 )
 
+replace github.com/slipynil/awgctrl-go => /home/user/GitProjects/awgctrl-go
+
 require (
 	github.com/Jipok/wgctrl-go v1.0.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect

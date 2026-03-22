@@ -11,6 +11,7 @@ type handlers interface {
 	AddPeer(w http.ResponseWriter, r *http.Request)
 	DeletePeer(w http.ResponseWriter, r *http.Request)
 	SendConfFile(w http.ResponseWriter, r *http.Request)
+	RestorePeer(w http.ResponseWriter, r *http.Request)
 }
 
 type server struct {
@@ -27,6 +28,7 @@ func (s *server) Start(endpoint string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/peers", s.handlers.DeletePeer).Methods("DELETE")
 	r.HandleFunc("/peers", s.handlers.AddPeer).Methods("POST")
+	r.HandleFunc("/peers/restore", s.handlers.RestorePeer).Methods("POST")
 	r.HandleFunc("/peers/{id}/config", s.handlers.SendConfFile).Methods("GET")
 
 	fmt.Printf("HTTP started on %s\n", endpoint)

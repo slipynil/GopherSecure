@@ -43,12 +43,46 @@ func (p *Postgres) GetHostID(chatID int64) (int, error) {
 	return hostID, err
 }
 
-// ExpiredConnection удаляет все peer с expires_at < NOW() и возвращает список удаленных dto.DelEntity (chat_id, public_key).
+// DeleteConnection удаляет запись пира из таблицы peer по host_id.
+func (p *Postgres) DeleteConnection(hostID int) error {
+	sqlRaw := `DELETE FROM peer WHERE host_id = $1;`
+	_, err := p.conn.Exec(p.ctx, sqlRaw, hostID)
+	return err
+}
+
+// GetConnection возвращает ключи и virtual socket существующего пира по chat_id.
+// Используется при продлении подписки для восстановления пира в WireGuard.
+func (p *Postgres) GetConnection(chatID int64) (*dto.DelEntity, error) {
+	sqlRaw := `
+	SELECT host_id, chat_id, public_key, preshared_key
+	FROM peer
+	WHERE chat_id = $1
+	ORDER BY host_id DESC
+	LIMIT 1;
+	`
+	var e dto.DelEntity
+	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&e.HostID, &e.ChatID, &e.PublicKey, &e.PresharedKey)
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+// MarkExpired помечает запись как обработанную — устанавливает expires_at в эпоху.
+// Пир деактивирован в WireGuard, но ключи сохраняются для восстановления при продлении.
+func (p *Postgres) MarkExpired(hostID int) error {
+	sqlRaw := `UPDATE peer SET expires_at = 'epoch' WHERE host_id = $1;`
+	_, err := p.conn.Exec(p.ctx, sqlRaw, hostID)
+	return err
+}
+
+// ExpiredConnection возвращает список пиров с истекшей активной подпиской.
+// Исключает уже обработанные записи (expires_at = 'epoch').
 func (p *Postgres) ExpiredConnection() ([]dto.DelEntity, error) {
 	const sqlRaw = `
-	DELETE FROM peer
-	WHERE expires_at < NOW()
-	RETURNING chat_id, public_key;
+	SELECT chat_id, public_key, preshared_key, host_id
+	FROM peer
+	WHERE expires_at < NOW() AND expires_at > 'epoch';
 	`
 
 	rows, err := p.conn.Query(p.ctx, sqlRaw)
@@ -60,13 +94,12 @@ func (p *Postgres) ExpiredConnection() ([]dto.DelEntity, error) {
 	var result []dto.DelEntity
 
 	for rows.Next() {
-		var chatID int64
-		var publicKey string
-		err := rows.Scan(&chatID, &publicKey)
+		var e dto.DelEntity
+		err := rows.Scan(&e.ChatID, &e.PublicKey, &e.PresharedKey, &e.HostID)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, dto.DelEntity{ChatID: chatID, PublicKey: publicKey})
+		result = append(result, e)
 	}
 
 	// Проверяем, не было ли ошибки при итерации
