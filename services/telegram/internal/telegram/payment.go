@@ -10,11 +10,11 @@ import (
 // Стоимость подписки составляет 20000 копеек (200 рублей) на 30 дней.
 func (t *Telegram) CreateAndSendInvoice(chatID int64, payload string) error {
 
-	title := "Оплата услуги"
+	title := "🔐 VPN подписка"
 	description := "Доступ на 30 дней"
 	currency := "RUB"
 	basePrice := tgbotapi.LabeledPrice{
-		Label:  "Оплата",
+		Label:  "VPN на 30 дней",
 		Amount: 20000,
 	}
 

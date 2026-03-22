@@ -48,7 +48,9 @@ type telegramClient interface {
 	Menu(chatID int64) error
 	// UpdateMainMenu меняет сообщение на главном меню
 	UpdateMainMenu(update tgbotapi.Update) error
-	// UpdateSendText меняет текст сообщения и ставит меню "назад"
+	// UpdateSendTextWithBackAction меняет текст сообщения и ставит меню "назад"
+	UpdateSendTextWithBackAction(update tgbotapi.Update, text string) error
+	// UpdateSendText меняет текст сообщения
 	UpdateSendText(update tgbotapi.Update, text string) error
 	// SendText отправляет текстовое сообщение пользователю
 	SendText(chatID int64, text string) error
