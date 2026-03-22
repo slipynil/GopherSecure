@@ -1,5 +1,7 @@
 package dto
 
+import "awg-service/internal/repository/model"
+
 type Response struct {
 	Data  any
 	Error string
@@ -15,12 +17,40 @@ type DelRequest struct {
 	PublicKey string `json:"public_key"`
 }
 
-func CreatePeerResponse(publicKey string) Response {
+type RestoreRequest struct {
+	TelegramID   int64  `json:"telegram_id"`
+	PublicKey    string `json:"public_key"`
+	PresharedKey string `json:"preshared_key"`
+	Socket       string `json:"socket"`
+}
+
+// DeleteResult contains information about the deletion operation result
+type DeleteResult struct {
+	Found   bool         // was the user found
+	Deleted bool         // was the user successfully deleted
+	User    *model.User  // deleted user (for potential rollback)
+}
+
+func CreatePeerResponse(publicKey, presharedKey string) Response {
 	return Response{
 		Data: struct {
-			PublicKey string `json:"public_key"`
+			PublicKey    string `json:"public_key"`
+			PresharedKey string `json:"preshared_key"`
 		}{
-			PublicKey: publicKey,
+			PublicKey:    publicKey,
+			PresharedKey: presharedKey,
+		},
+	}
+}
+
+func CreateKeysResponse(publicKey string, presharedKey string) Response {
+	return Response{
+		Data: struct {
+			PublicKey    string `json:"public_key"`
+			PresharedKey string `json:"preshared_key"`
+		}{
+			PublicKey:    publicKey,
+			PresharedKey: presharedKey,
 		},
 	}
 }

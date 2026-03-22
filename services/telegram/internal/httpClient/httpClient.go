@@ -1,3 +1,5 @@
+// Package httpclient предоставляет HTTP клиент для взаимодействия с API сервиса AWG.
+// Клиент отвечает за управление WireGuard пирами и получение конфигурационных файлов.
 package httpclient
 
 import (
@@ -10,17 +12,21 @@ import (
 	"telegram-service/internal/dto"
 )
 
+// client представляет HTTP клиент для взаимодействия с AWG сервисом.
 type client struct {
 	http *http.Client
 	url  string
 }
 
-// client constructor
+// New создает новый HTTP клиент с указанным endpoint для AWG сервиса.
 func New(endpoint string) *client {
 	return &client{http: new(http.Client), url: endpoint}
 }
 
-// adds a new peer, use method post, and returns the response body with publicKey
+// AddPeer добавляет новый WireGuard пир на AWG сервисе для пользователя с ID telegramID.
+// Параметр hostID используется для создания виртуального IP адреса формата 10.66.66.{hostID}/32.
+// Если DNS равен true, устанавливаются публичные DNS серверы 1.1.1.1 и 8.8.8.8.
+// Возвращает ответ сервера содержащий оба ключа: публичный и preshared.
 func (c *client) AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error) {
 	virtualEndpoint := fmt.Sprintf("10.66.66.%d/32", hostID)
 
@@ -52,6 +58,8 @@ func (c *client) AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response,
 	return responseDecode(resp)
 }
 
+// DeletePeer удаляет WireGuard пир с указанным publicKey с AWG сервиса.
+// В случае ошибки возвращает описание проблемы.
 func (c *client) DeletePeer(publicKey string) error {
 
 	url := fmt.Sprintf("%s/peers", c.url)
@@ -79,6 +87,44 @@ func (c *client) DeletePeer(publicKey string) error {
 	return err
 }
 
+// RestorePeer восстанавливает существующего пира в WireGuard с известными ключами.
+// Используется при продлении подписки — конфиг файл пользователя остаётся валидным.
+func (c *client) RestorePeer(publicKey, presharedKey, socket string, telegramID int64) error {
+	url := fmt.Sprintf("%s/peers/restore", c.url)
+
+	reqStruct := struct {
+		TelegramID   int64  `json:"telegram_id"`
+		PublicKey    string `json:"public_key"`
+		PresharedKey string `json:"preshared_key"`
+		Socket       string `json:"socket"`
+	}{telegramID, publicKey, presharedKey, socket}
+
+	reqBytes, err := json.Marshal(reqStruct)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.http.Post(url, "application/json", bytes.NewReader(reqBytes))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Проверяем статус ответа, не пытаясь парсить JSON
+	// (удалённый AWG может ещё не быть обновлён)
+	if resp.StatusCode != http.StatusOK {
+		var errResp dto.Response
+		if jsonErr := json.NewDecoder(resp.Body).Decode(&errResp); jsonErr == nil && errResp.Error != "" {
+			return fmt.Errorf("restore peer failed (%d): %s", resp.StatusCode, errResp.Error)
+		}
+		return fmt.Errorf("restore peer failed with status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// DownloadConfFile загружает конфигурационный файл WireGuard для пользователя с ID telegramID.
+// Возвращает содержимое файла как массив байт.
+// Если сервер возвращает статус код отличный от 200, возвращает ошибку.
 func (c *client) DownloadConfFile(telegramID int64) ([]byte, error) {
 	url := fmt.Sprintf("%s/peers/%d/config", c.url, telegramID)
 
@@ -102,6 +148,8 @@ func (c *client) DownloadConfFile(telegramID int64) ([]byte, error) {
 	return data, nil
 }
 
+// responseDecode декодирует JSON ответ от AWG сервиса в структуру [dto.Response].
+// Если ответ содержит ошибку, возвращает ее описание вместе со статус кодом.
 func responseDecode(resp *http.Response) (*dto.Response, error) {
 	respStruct := dto.Response{}
 	err := json.NewDecoder(resp.Body).Decode(&respStruct)

@@ -1,3 +1,4 @@
+// Package service предоставляет основную бизнес-логику для управления VPN подписками и взаимодействием с клиентами через Telegram.
 package service
 
 import (
@@ -9,16 +10,22 @@ import (
 	"telegram-service/logger"
 )
 
+// Update запускает основной цикл обработки обновлений от Telegram.
+// Функция обрабатывает сообщения, платежи и взаимодействие пользователя с кнопками,
+// а также периодически проверяет истекшие подписки через [CheckSubcription].
 func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 
-	duration := time.Hour
+	logger.Logger.Info("service is running")
+	duration := time.Minute
 	go s.CheckSubcription(ctx, logger, duration)
 
 	for u := range s.telegram.Chan() {
 		// если есть сигнал об оплате
 		if u.PreCheckoutQuery != nil {
+
 			err := s.telegram.PreCheckoutQuery(u)
 			logger.IsErr("failed to answer pre_checkout_query", err)
+
 			// если структура message не пустая и является командой
 		} else if u.Message != nil {
 			chat := u.Message.Chat
@@ -26,12 +33,16 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 				if dto, err := s.telegram.HandleSuccessfulPayment(u); err != nil {
 					logger.IsErr("payment canceled", err)
 				} else {
+
 					err := s.postgres.SuccessfulPaymentStatus(dto.InvoicePayload)
 					logger.IsErr("failed to change true status on payment", err)
+
 					err = s.postgres.StatusTrue(chat.ID)
 					logger.IsErr("failed to change true status on client", err)
+
 					err = s.add(chat.ID, dto.TotalAmount)
 					logger.IsErr("failed to add peer", err)
+
 					if err == nil {
 						msg := fmt.Sprintf("пользователь %s купил подписку за %v %s", chat.UserName, dto.TotalAmount/100, dto.Currency)
 						logger.Logger.Info(msg)
@@ -45,6 +56,7 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 				s.telegram.Menu(chat.ID)
 
 			case "start":
+
 				err := s.postgres.AddClient(chat.UserName, chat.ID)
 				if err != nil {
 					logger.IsErr("failed to add client to postgres", err)
@@ -82,19 +94,28 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 				logger.IsErr("", err)
 
 			case "оплатить":
-				if s.postgres.CheckStatus(chat.ID) {
+				status, err := s.postgres.CheckStatus(chat.ID)
+				if err != nil {
+					logger.IsErr("failed to check status", err)
+					err := s.telegram.UpdateSendText(u, "Ошибка проверки статуса")
+					logger.IsErr("", err)
+				} else if status {
 					err := s.telegram.UpdateSendText(u, "Вы уже оплатили")
 					logger.IsErr("", err)
 				} else {
 					err := s.Invoice(u)
 					if err != nil {
 						logger.IsErr("failed to create invoice", err)
-					} else {
 					}
 				}
 
 			case "протестировать":
-				if s.postgres.IsTested(chat.ID) {
+				isTested, err := s.postgres.IsTested(chat.ID)
+				if err != nil {
+					logger.IsErr("failed to check if tested", err)
+					err := s.telegram.UpdateSendText(u, "Ошибка проверки статуса")
+					logger.IsErr("", err)
+				} else if isTested {
 					err := s.telegram.UpdateSendText(u, "У вас уже был тестовый доступ")
 					logger.IsErr("", err)
 				} else {

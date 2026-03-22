@@ -8,8 +8,12 @@ import (
 	"telegram-service/logger"
 )
 
+// text содержит сообщение об истечении подписки.
 const text = "Ваша подписка истекла, продлите для дальнейшего использования нашей услуги"
 
+// CheckSubcription периодически проверяет истекшие подписки с заданным интервалом duration.
+// Для каждой истекшей подписки удаляет пира на AWG сервисе, обновляет статус в БД и отправляет уведомление пользователю.
+// Функция работает до отмены контекста ctx.
 func (s *service) CheckSubcription(ctx context.Context, logger *logger.MyLogger, duration time.Duration) {
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
@@ -22,21 +26,36 @@ func (s *service) CheckSubcription(ctx context.Context, logger *logger.MyLogger,
 			data, err := s.postgres.ExpiredConnection()
 			if err != nil {
 				logger.IsErr("fail to get expired connections", err)
+				continue
 			}
+
 			for _, r := range data {
-				if err := s.httpClient.DeletePeer(r.PublicKey); err != nil {
-					logger.IsErr("fail to delete peer", err)
+				if r.PublicKey == "" {
+					// Placeholder record with no keys — just delete it
+					logger.Logger.Info(fmt.Sprintf("skipping peer deletion - PublicKey is empty for ChatID: %d", r.ChatID))
+					if err := s.postgres.DeleteConnection(r.HostID); err != nil {
+						logger.IsErr("fail to delete empty connection", err)
+					}
+					continue
 				}
+
+				// Remove from WireGuard — keys stay in peer table for renewal
+				if err := s.httpClient.DeletePeer(r.PublicKey); err != nil {
+					logger.IsErr("fail to delete peer from wireguard", err)
+				}
+				// Mark subscription as inactive
 				if err := s.postgres.StatusFalse(r.ChatID); err != nil {
 					logger.IsErr("fail to update status", err)
+				}
+				// Reset expiry so row won't appear in next ExpiredConnection call
+				if err := s.postgres.MarkExpired(r.HostID); err != nil {
+					logger.IsErr("fail to mark connection expired", err)
 				}
 				if err = s.telegram.SendText(r.ChatID, text); err != nil {
 					logger.IsErr("fail to send text", err)
 				}
-				msg := fmt.Sprintf("у пользователя %d закончилась подписка", r.ChatID)
-				logger.Logger.Info(msg)
+				logger.Logger.Info(fmt.Sprintf("у пользователя %d закончилась подписка", r.ChatID))
 			}
-			logger.Logger.Info("проверка подписок завершена")
 		}
 	}
 }

@@ -18,6 +18,8 @@ github.com/slipynil/awgctrl-go v1.1.0 h1:L0L9gL1LcjuaTziqkrualTRh0R3ARxFnZm04Vmp
 github.com/slipynil/awgctrl-go v1.1.0/go.mod h1:K7KVCEXPktq0d6vXcqIYNctIlH9yPRWSFcyQbjIQ7PQ=
 github.com/slipynil/awgctrl-go v1.1.1 h1:4Di/KPECQuXqOKWIB6kvnUrDeY6LDVtpDBHdIROdAr8=
 github.com/slipynil/awgctrl-go v1.1.1/go.mod h1:K7KVCEXPktq0d6vXcqIYNctIlH9yPRWSFcyQbjIQ7PQ=
+github.com/slipynil/awgctrl-go v1.2.0 h1:1C3BXWaxAPRco7PJb9HvA2zXEkHCgNO0qV1PgoiYR/Q=
+github.com/slipynil/awgctrl-go v1.2.0/go.mod h1:K7KVCEXPktq0d6vXcqIYNctIlH9yPRWSFcyQbjIQ7PQ=
 golang.org/x/crypto v0.46.0 h1:cKRW/pmt1pKAfetfu+RCEvjvZkA9RimPbh7bhFjGVBU=
 golang.org/x/crypto v0.46.0/go.mod h1:Evb/oLKmMraqjZ2iQTwDwvCtJkczlDuTmdJXoZVzqU0=
 golang.org/x/net v0.48.0 h1:zyQRTTrjc33Lhh0fBgT/H3oZq9WuvRR5gPC70xpDiQU=

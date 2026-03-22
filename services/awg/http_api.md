@@ -59,7 +59,8 @@ All responses are in JSON format with the following structure:
 ```json
 {
   "data": {
-    "public_key": "WKNwjBYSFXX6NvLhc/OaC1Vxz3DxShF2C1Bz4dE5+0w="
+    "public_key": "WKNwjBYSFXX6NvLhc/OaC1Vxz3DxShF2C1Bz4dE5+0w=",
+    "preshared_key": "gI+VqaLCzN9P5K8dR2E3L0M7N2E1D8Q5T4U9X8A7V6="
   }
 }
 ```
@@ -67,6 +68,7 @@ All responses are in JSON format with the following structure:
 | Field | Type | Description |
 |-------|------|-------------|
 | `data.public_key` | string | Generated public key for the peer |
+| `data.preshared_key` | string | Generated preshared key for enhanced security |
 
 **Error Cases**
 
@@ -249,10 +251,11 @@ type Response struct {
 }
 ```
 
-#### Peer Public Key Response
+#### Peer Response (AddPeer)
 ```go
 {
-	"public_key": string
+	"public_key": string,
+	"preshared_key": string
 }
 ```
 

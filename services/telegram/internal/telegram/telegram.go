@@ -1,3 +1,5 @@
+// Package telegram содержит реализацию Telegram бота для сервиса GopherSecure.
+// Бот управляет взаимодействием с пользователями через Telegram Bot API.
 package telegram
 
 import (
@@ -9,12 +11,15 @@ import (
 	"telegram-service/internal/dto"
 )
 
+// Telegram представляет Telegram бота с функциями управления меню и процессом оплаты.
 type Telegram struct {
 	bot           *tgbotapi.BotAPI
 	updates       tgbotapi.UpdatesChannel
 	providerToken string
 }
 
+// New создает новый экземпляр Telegram бота с указанными токеном и токеном провайдера платежей.
+// Возвращает инициализированного бота готового к обработке обновлений.
 func New(telegramToken, providerToken string) (*Telegram, error) {
 	bot, err := tgbotapi.NewBotAPI(telegramToken)
 	if err != nil {
@@ -39,11 +44,13 @@ func New(telegramToken, providerToken string) (*Telegram, error) {
 	return telegram, nil
 }
 
+// Chan возвращает канал обновлений от Telegram Bot API.
 func (t *Telegram) Chan() tgbotapi.UpdatesChannel {
 	return t.updates
 }
 
-// маппинг кнопок главного меню
+// keyboardMainMenu создает клавиатуру с кнопками главного меню.
+// Включает опции для получения конфига, помощи, тестирования, стоимости и оплаты.
 func keyboardMainMenu() tgbotapi.InlineKeyboardMarkup {
 	options := []string{"получить конфиг", "помощь", "протестировать", "стоимость", "оплатить"}
 
@@ -56,7 +63,7 @@ func keyboardMainMenu() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
 
-// маппинг кнопок для выхода из опции
+// keyboardBackMenu создает клавиатуру с кнопкой возврата в главное меню.
 func keyboardBackMenu() tgbotapi.InlineKeyboardMarkup {
 	opt := "<- назад"
 	btn := tgbotapi.NewInlineKeyboardButtonData(opt, dto.EncodeCallbackData(opt))
@@ -64,7 +71,7 @@ func keyboardBackMenu() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(row)
 }
 
-// создает новое сообщение и отправляет меню
+// Menu отправляет новое сообщение с главным меню пользователю.
 func (t *Telegram) Menu(chatID int64) error {
 
 	msg := tgbotapi.NewMessage(chatID, "📱 Главное меню")
@@ -74,7 +81,7 @@ func (t *Telegram) Menu(chatID int64) error {
 	return err
 }
 
-// меняет текущее сообщение и отправляет меню
+// UpdateMainMenu редактирует текущее сообщение и выводит главное меню.
 func (t *Telegram) UpdateMainMenu(update tgbotapi.Update) error {
 
 	msg := tgbotapi.NewEditMessageTextAndMarkup(
@@ -88,7 +95,7 @@ func (t *Telegram) UpdateMainMenu(update tgbotapi.Update) error {
 	return err
 }
 
-// меняет текущее сообщение и отправляет заданный текст с маппингом выхода из опции
+// UpdateSendText редактирует текущее сообщение на заданный текст с кнопкой возврата.
 func (t *Telegram) UpdateSendText(update tgbotapi.Update, text string) error {
 	msg := tgbotapi.NewEditMessageTextAndMarkup(
 		update.CallbackQuery.Message.Chat.ID,
@@ -102,6 +109,8 @@ func (t *Telegram) UpdateSendText(update tgbotapi.Update, text string) error {
 	return err
 }
 
+// SendFile отправляет конфигурационный файл пользователю.
+// Файл назначается с именем формата awg{timestamp}.conf.
 func (t *Telegram) SendFile(chatID int64, bufer []byte) error {
 	// create document struct
 	unix := time.Now().Unix()
@@ -114,6 +123,7 @@ func (t *Telegram) SendFile(chatID int64, bufer []byte) error {
 	return err
 }
 
+// SendText отправляет текстовое сообщение пользователю.
 func (t *Telegram) SendText(chatID int64, text string) error {
 	msg := tgbotapi.NewMessage(chatID, text)
 	_, err := t.bot.Send(msg)
