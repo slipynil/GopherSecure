@@ -109,3 +109,21 @@ func (p *Postgres) ExpiredConnection() ([]dto.DelEntity, error) {
 	return result, nil
 }
 
+// HasPeerWithKeys проверяет, есть ли у пользователя пир с заполненными ключами.
+// Не проверяет срок действия подписки, просто наличие публичного и preshared ключей.
+func (p *Postgres) HasPeerWithKeys(chatID int64) (bool, error) {
+	sqlRaw := `
+	SELECT EXISTS (
+		SELECT 1 FROM peer
+		WHERE chat_id = $1
+		AND public_key IS NOT NULL
+		AND public_key != ''
+		AND preshared_key IS NOT NULL
+		AND preshared_key != ''
+	);
+	`
+	var exists bool
+	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&exists)
+	return exists, err
+}
+

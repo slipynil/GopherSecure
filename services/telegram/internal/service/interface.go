@@ -37,6 +37,15 @@ type postgres interface {
 	GetConnection(chatID int64) (*dto.DelEntity, error)
 	ExpiredConnection() ([]dto.DelEntity, error)
 	GetHostID(chatID int64) (int, error)
+	HasPeerWithKeys(chatID int64) (bool, error)
+
+	// promo code methods
+	GetPromoCode(code string) (bonusDays int, promoCodeID int, err error)
+	CanActivatePromoCode(promoCodeID int, chatID int64) (bool, error)
+	ActivatePromoCode(promoCodeID int, chatID int64) error
+	IncrementPromoCodeUsage(promoCodeID int) error
+	ApplyPromoBonusDays(chatID int64, bonusDays int) error
+	DeactivatePromoCode(promoCodeID int) error
 }
 
 // telegramClient определяет интерфейс для взаимодействия с Telegram Bot API.
