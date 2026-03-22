@@ -5,3 +5,4 @@ services/telegram/.env
 services/telegram/internal/service/logs/*
 services/telegram/data/*
 services/telegram/logs/*
+services/cli-admins/.env
