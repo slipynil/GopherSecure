@@ -84,7 +84,7 @@ func (c *client) DeletePeer(publicKey string) error {
 	}
 	defer resp.Body.Close()
 
-	// 404 считается успехом — пир уже удалён
+	// 404 считается успехом — пир может быть уже удалён или не существовать
 	if resp.StatusCode == http.StatusNotFound {
 		return nil
 	}

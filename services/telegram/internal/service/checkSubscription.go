@@ -29,10 +29,6 @@ func (s *service) CheckSubcription(ctx context.Context, logger *logger.MyLogger,
 				continue
 			}
 
-			if len(data) > 0 {
-				logger.Logger.Info(fmt.Sprintf("found %d expired connections", len(data)))
-			}
-
 			for _, r := range data {
 				if r.PublicKey == "" {
 					// Placeholder record with no keys — just delete it
