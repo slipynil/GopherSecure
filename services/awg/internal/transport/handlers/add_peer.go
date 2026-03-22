@@ -42,5 +42,5 @@ func (h *handlers) AddPeer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := dto.CreatePeerResponse(peer.PublicKey, peer.PresharedKey)
-	httpResponse(w, http.StatusCreated, resp, nil)
+	httpResponse(w, http.StatusCreated, resp.Data, nil)
 }

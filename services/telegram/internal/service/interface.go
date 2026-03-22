@@ -30,7 +30,8 @@ type postgres interface {
 	SuccessfulPaymentStatus(payload string) error
 
 	// peers methods
-	SaveConnection(chatID int64, publicKey, presharedKey string, expiresAt time.Time) error
+	NewConnection(chatID int64) (int, error)
+	SaveConnection(hostID int, publicKey, presharedKey string, expiresAt time.Time) error
 	ExpiredConnection() ([]dto.DelEntity, error)
 	GetHostID(chatID int64) (int, error)
 }

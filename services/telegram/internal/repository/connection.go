@@ -5,24 +5,38 @@ import (
 	"time"
 )
 
-// SaveConnection сохраняет полную информацию о подключении пира в одной операции.
-// Удаляет старые записи для этого chat_id и создает новую с обоими ключами и сроком истечения.
-func (p *Postgres) SaveConnection(chatID int64, publicKey, presharedKey string, expiresAt time.Time) error {
+// SaveConnection обновляет существующую запись пира по host_id с обоими ключами и сроком истечения.
+// Ожидается, что запись уже создана вызовом NewConnection(), который вернул host_id.
+func (p *Postgres) SaveConnection(hostID int, publicKey, presharedKey string, expiresAt time.Time) error {
 	sqlRaw := `
-	DELETE FROM peer WHERE chat_id = $1;
-
-	INSERT INTO peer (chat_id, public_key, preshared_key, expires_at)
-	VALUES ($1, $2, $3, $4);
+	UPDATE peer
+	SET public_key = $2, preshared_key = $3, expires_at = $4
+	WHERE host_id = $1;
 	`
-	_, err := p.conn.Exec(p.ctx, sqlRaw, chatID, publicKey, presharedKey, expiresAt)
+	_, err := p.conn.Exec(p.ctx, sqlRaw, hostID, publicKey, presharedKey, expiresAt)
 	return err
+}
+
+// NewConnection создает новую запись в таблице peer с chat_id и возвращает автогенерированный host_id.
+// Устанавливает временный expires_at, который будет обновлен в SaveConnection().
+func (p *Postgres) NewConnection(chatID int64) (int, error) {
+	sqlRaw := `
+	INSERT INTO peer (chat_id, expires_at)
+	VALUES ($1, NOW() + INTERVAL '24 hours')
+	RETURNING host_id;
+	`
+	var hostID int
+	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&hostID)
+	return hostID, err
 }
 
 // GetHostID возвращает host_id peer'а по chat_id.
 func (p *Postgres) GetHostID(chatID int64) (int, error) {
 	sqlRaw := `
 	SELECT host_id FROM peer
-	WHERE chat_id = $1;
+	WHERE chat_id = $1
+	ORDER BY host_id DESC
+	LIMIT 1;
 	`
 	var hostID int
 	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&hostID)

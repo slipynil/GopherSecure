@@ -19,9 +19,10 @@ func (s *service) add(chatID int64, price int) error {
 	}
 	expiresAt := now.Add(duration)
 
-	hostID, err := s.postgres.GetHostID(chatID)
+	// Create placeholder peer record to get host_id
+	hostID, err := s.postgres.NewConnection(chatID)
 	if err != nil {
-		return fmt.Errorf("Error getting host ID: %w", err)
+		return fmt.Errorf("failed to create connection placeholder: %w", err)
 	}
 
 	// Add peer to AWG and get both keys in one call
@@ -33,8 +34,8 @@ func (s *service) add(chatID int64, price int) error {
 	publicKey := data.GetKey()
 	presharedKey := data.GetPresharedKey()
 
-	// Save connection with all data in one database call
-	if err := s.postgres.SaveConnection(chatID, publicKey, presharedKey, expiresAt); err != nil {
+	// Save connection with all data in one database call, using host_id for precise update
+	if err := s.postgres.SaveConnection(hostID, publicKey, presharedKey, expiresAt); err != nil {
 		return fmt.Errorf("failed to save connection: %w", err)
 	}
 
