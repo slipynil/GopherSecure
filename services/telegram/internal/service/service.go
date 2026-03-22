@@ -70,37 +70,34 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 		} else if u.CallbackQuery != nil {
 
 			chat := u.CallbackQuery.Message.Chat
+			callBackData := u.CallbackQuery.Data
 
-			// add peer command send conf file for user
-			callBackData, err := dto.DecodeCallbackData(u.CallbackQuery.Data)
-			logger.IsErr("failed decoding callback data", err)
+			switch callBackData {
 
-			switch callBackData.Action {
-
-			case "<- назад":
+			case dto.ActionBack:
 				err := s.telegram.UpdateMainMenu(u)
 				logger.IsErr("failed to redirect main menu", err)
 
-			case "получить конфиг":
+			case dto.ActionConfig:
 				err := s.getConfFile(u)
 				logger.IsErr("failed to get conf file", err)
 
-			case "помощь":
-				err := s.telegram.UpdateSendText(u, HelpText)
+			case dto.ActionHelp:
+				err := s.telegram.UpdateSendTextWithBackAction(u, HelpText)
 				logger.IsErr("", err)
 
-			case "стоимость":
-				err := s.telegram.UpdateSendText(u, PricingText)
+			case dto.ActionPricing:
+				err := s.telegram.UpdateSendTextWithBackAction(u, PricingText)
 				logger.IsErr("", err)
 
-			case "оплатить":
+			case dto.ActionPay:
 				status, err := s.postgres.CheckStatus(chat.ID)
 				if err != nil {
 					logger.IsErr("failed to check status", err)
 					err := s.telegram.UpdateSendText(u, "Ошибка проверки статуса")
 					logger.IsErr("", err)
 				} else if status {
-					err := s.telegram.UpdateSendText(u, "Вы уже оплатили")
+					err := s.telegram.UpdateSendTextWithBackAction(u, "Вы уже оплатили")
 					logger.IsErr("", err)
 				} else {
 					err := s.Invoice(u)
@@ -109,14 +106,14 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 					}
 				}
 
-			case "протестировать":
+			case dto.ActionTrial:
 				isTested, err := s.postgres.IsTested(chat.ID)
 				if err != nil {
 					logger.IsErr("failed to check if tested", err)
 					err := s.telegram.UpdateSendText(u, "Ошибка проверки статуса")
 					logger.IsErr("", err)
 				} else if isTested {
-					err := s.telegram.UpdateSendText(u, "У вас уже был тестовый доступ")
+					err := s.telegram.UpdateSendTextWithBackAction(u, "У вас уже был тестовый доступ")
 					logger.IsErr("", err)
 				} else {
 					err := s.postgres.Tested(chat.ID)
@@ -127,7 +124,7 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 					if err != nil {
 						logger.IsErr("failed to send text", err)
 					} else {
-						msg := fmt.Sprintf("пользователь %s получил тестовый доступ", chat.UserName)
+						msg := fmt.Sprintf("пользователь %s получил тестовый доступ", chat.ID)
 						logger.Logger.Info(msg)
 					}
 				}

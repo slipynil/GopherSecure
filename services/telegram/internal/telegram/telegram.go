@@ -4,12 +4,28 @@ package telegram
 
 import (
 	"fmt"
+	"telegram-service/internal/dto"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-
-	"telegram-service/internal/dto"
 )
+
+const MENU = "   🌐 GopherSecure VPN "
+
+var actionLabels = map[string]string{
+	dto.ActionBack:    "↩️ Назад",
+	dto.ActionTrial:   "⚡ Попробовать бесплатно",
+	dto.ActionPricing: "💰 Стоимость",
+	dto.ActionPay:     "💳 Купить подписку",
+	dto.ActionConfig:  "📦 Мой конфиг",
+	dto.ActionHelp:    "❓ Помощь",
+}
+
+var commands = []tgbotapi.BotCommand{
+	{Command: "start", Description: "Начать работу с ботом"},
+	{Command: "menu", Description: "Меню"},
+	{Command: "promo", Description: "🎁 Промокод"},
+}
 
 // Telegram представляет Telegram бота с функциями управления меню и процессом оплаты.
 type Telegram struct {
@@ -34,9 +50,6 @@ func New(telegramToken, providerToken string) (*Telegram, error) {
 	telegram.updates = bot.GetUpdatesChan(u)
 
 	// меню слева внизу с командами
-	commands := []tgbotapi.BotCommand{
-		{Command: "menu", Description: "Меню"},
-	}
 	_, err = telegram.bot.Request(tgbotapi.NewSetMyCommands(commands...))
 	if err != nil {
 		return nil, err
@@ -51,22 +64,26 @@ func (t *Telegram) Chan() tgbotapi.UpdatesChannel {
 
 // keyboardMainMenu создает клавиатуру с кнопками главного меню.
 // Включает опции для получения конфига, помощи, тестирования, стоимости и оплаты.
-func keyboardMainMenu() tgbotapi.InlineKeyboardMarkup {
-	options := []string{"получить конфиг", "помощь", "протестировать", "стоимость", "оплатить"}
 
-	rows := make([][]tgbotapi.InlineKeyboardButton, 0, len(options))
-	for _, opt := range options {
-		btn := tgbotapi.NewInlineKeyboardButtonData(opt, dto.EncodeCallbackData(opt))
-		row := tgbotapi.NewInlineKeyboardRow(btn)
-		rows = append(rows, row)
-	}
-	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+func keyboardMainMenu() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(actionLabels[dto.ActionTrial], dto.ActionTrial),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(actionLabels[dto.ActionPay], dto.ActionPay),
+			tgbotapi.NewInlineKeyboardButtonData(actionLabels[dto.ActionPricing], dto.ActionPricing),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(actionLabels[dto.ActionConfig], dto.ActionConfig),
+			tgbotapi.NewInlineKeyboardButtonData(actionLabels[dto.ActionHelp], dto.ActionHelp),
+		),
+	)
 }
 
 // keyboardBackMenu создает клавиатуру с кнопкой возврата в главное меню.
 func keyboardBackMenu() tgbotapi.InlineKeyboardMarkup {
-	opt := "<- назад"
-	btn := tgbotapi.NewInlineKeyboardButtonData(opt, dto.EncodeCallbackData(opt))
+	btn := tgbotapi.NewInlineKeyboardButtonData(actionLabels[dto.ActionBack], dto.ActionBack)
 	row := tgbotapi.NewInlineKeyboardRow(btn)
 	return tgbotapi.NewInlineKeyboardMarkup(row)
 }
@@ -74,7 +91,7 @@ func keyboardBackMenu() tgbotapi.InlineKeyboardMarkup {
 // Menu отправляет новое сообщение с главным меню пользователю.
 func (t *Telegram) Menu(chatID int64) error {
 
-	msg := tgbotapi.NewMessage(chatID, "📱 Главное меню")
+	msg := tgbotapi.NewMessage(chatID, MENU)
 	msg.ReplyMarkup = keyboardMainMenu()
 
 	_, err := t.bot.Send(msg)
@@ -87,7 +104,7 @@ func (t *Telegram) UpdateMainMenu(update tgbotapi.Update) error {
 	msg := tgbotapi.NewEditMessageTextAndMarkup(
 		update.CallbackQuery.Message.Chat.ID,
 		update.CallbackQuery.Message.MessageID,
-		"📱 главное меню",
+		MENU,
 		keyboardMainMenu(),
 	)
 
@@ -95,13 +112,26 @@ func (t *Telegram) UpdateMainMenu(update tgbotapi.Update) error {
 	return err
 }
 
-// UpdateSendText редактирует текущее сообщение на заданный текст с кнопкой возврата.
-func (t *Telegram) UpdateSendText(update tgbotapi.Update, text string) error {
+// UpdateSendTextWithBackAction редактирует текущее сообщение на заданный текст с кнопкой возврата.
+func (t *Telegram) UpdateSendTextWithBackAction(update tgbotapi.Update, text string) error {
 	msg := tgbotapi.NewEditMessageTextAndMarkup(
 		update.CallbackQuery.Message.Chat.ID,
 		update.CallbackQuery.Message.MessageID,
 		text,
 		keyboardBackMenu(),
+	)
+
+	_, err := t.bot.Send(msg)
+
+	return err
+}
+
+// UpdateSendText редактирует текущее сообщение на заданный текст без кнопки возврата.
+func (t *Telegram) UpdateSendText(update tgbotapi.Update, text string) error {
+	msg := tgbotapi.NewEditMessageText(
+		update.CallbackQuery.Message.Chat.ID,
+		update.CallbackQuery.Message.MessageID,
+		text,
 	)
 
 	_, err := t.bot.Send(msg)
