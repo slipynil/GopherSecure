@@ -36,21 +36,23 @@ func (p *Postgres) StatusFalse(chatID int64) error {
 	return err
 }
 
-// CheckStatus возвращает текущий status клиента по chat_id.
+// CheckStatus проверяет есть ли у пользователя активная подписка.
+// Возвращает true если существует пир с expires_at > NOW().
 func (p *Postgres) CheckStatus(chatID int64) (bool, error) {
 	sqlRaw := `
-	SELECT status
-	FROM client
-	WHERE chat_id = $1;
+	SELECT EXISTS (
+		SELECT 1 FROM peer
+		WHERE chat_id = $1 AND expires_at > NOW()
+	);
 	`
-	var status bool
-	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&status)
+	var hasActiveSubscription bool
+	err := p.conn.QueryRow(p.ctx, sqlRaw, chatID).Scan(&hasActiveSubscription)
 
 	if err != nil {
 		return false, err
 	}
 
-	return status, nil
+	return hasActiveSubscription, nil
 }
 
 // Tested устанавливает is_tested = true для клиента по chat_id.

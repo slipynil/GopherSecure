@@ -53,7 +53,28 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 			switch u.Message.Command() {
 
 			case "menu":
+				// Проверить что пользователь авторизован
+				_, err := s.postgres.CheckStatus(chat.ID)
+				if err != nil {
+					s.telegram.SendText(chat.ID, "❌ Сначала отправьте команду /start для авторизации")
+					break
+				}
 				s.telegram.Menu(chat.ID)
+
+			case "promo":
+				// Проверить что пользователь авторизован
+				_, err := s.postgres.CheckStatus(chat.ID)
+				if err != nil {
+					s.telegram.SendText(chat.ID, "❌ Сначала отправьте команду /start для авторизации")
+					break
+				}
+				promoCode := u.Message.CommandArguments()
+				if promoCode == "" {
+					err := s.telegram.SendText(chat.ID, "❌ Использование: /promo ПРОМОКОД\nПример: /promo BONUS30")
+					logger.IsErr("", err)
+				} else {
+				s.ApplyPromoCodeFromMessage(chat.ID, promoCode, logger)
+			}
 
 			case "start":
 
@@ -107,6 +128,10 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 				}
 
 			case dto.ActionTrial:
+				// Убедиться что пользователь добавлен в БД
+				err := s.postgres.AddClient(chat.UserName, chat.ID)
+				logger.IsErr("failed to add client", err)
+
 				isTested, err := s.postgres.IsTested(chat.ID)
 				if err != nil {
 					logger.IsErr("failed to check if tested", err)
@@ -124,7 +149,7 @@ func (s *service) Update(ctx context.Context, logger *logger.MyLogger) {
 					if err != nil {
 						logger.IsErr("failed to send text", err)
 					} else {
-						msg := fmt.Sprintf("пользователь %s получил тестовый доступ", chat.ID)
+						msg := fmt.Sprintf("пользователь %v получил тестовый доступ", chat.ID)
 						logger.Logger.Info(msg)
 					}
 				}
