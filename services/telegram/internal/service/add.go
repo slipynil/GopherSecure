@@ -13,9 +13,9 @@ import (
 // В случае ошибки на любом этапе возвращает описание проблемы.
 func (s *service) add(chatID int64, price int) error {
 	now := time.Now()
-	duration := 1 * time.Minute
+	duration := 24 * time.Hour
 	if price == 20000 {
-		duration = 1 * time.Minute
+		duration = 30 * 24 * time.Hour
 	}
 	expiresAt := now.Add(duration)
 
