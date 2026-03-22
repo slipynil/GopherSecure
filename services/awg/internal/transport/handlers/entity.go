@@ -19,6 +19,7 @@ type repository interface {
 	DeleteUser(publicKey string) error
 	DeleteUserEx(publicKey string) (*dto.DeleteResult, error)
 	RestoreUser(user *model.User) error
+	UpsertUser(user *model.User) error
 	GetFile(id string) (string, error)
 	GetUser(id int64) (*model.User, error)
 }

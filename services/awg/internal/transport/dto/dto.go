@@ -18,6 +18,7 @@ type DelRequest struct {
 }
 
 type RestoreRequest struct {
+	TelegramID   int64  `json:"telegram_id"`
 	PublicKey    string `json:"public_key"`
 	PresharedKey string `json:"preshared_key"`
 	Socket       string `json:"socket"`

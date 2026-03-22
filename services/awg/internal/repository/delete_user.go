@@ -128,3 +128,36 @@ func (r *Repository) RestoreUser(user *model.User) error {
 
 	return json.NewEncoder(file).Encode(users)
 }
+
+// UpsertUser добавляет пира в users.json, или обновляет если уже существует.
+// Используется при восстановлении пира при продлении подписки.
+func (r *Repository) UpsertUser(user *model.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var users []model.User
+	content, err := os.ReadFile(r.UsersFilePath)
+	if err == nil && len(content) > 0 {
+		json.Unmarshal(content, &users)
+	}
+
+	// Обновить если существует, иначе добавить
+	idx := slices.IndexFunc(users, func(u model.User) bool {
+		return u.PublicKey == user.PublicKey
+	})
+	if idx != -1 {
+		users[idx] = *user
+	} else {
+		users = append(users, *user)
+	}
+
+	file, err := os.OpenFile(r.UsersFilePath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(users)
+}

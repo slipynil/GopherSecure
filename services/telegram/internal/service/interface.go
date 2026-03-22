@@ -68,7 +68,7 @@ type telegramClient interface {
 type httpClient interface {
 	AddPeer(hostID int, DNS bool, telegramID int64) (*dto.Response, error)
 	DeletePeer(publicKey string) error
-	RestorePeer(publicKey, presharedKey, socket string) error
+	RestorePeer(publicKey, presharedKey, socket string, telegramID int64) error
 	DownloadConfFile(telegramID int64) ([]byte, error)
 }
 

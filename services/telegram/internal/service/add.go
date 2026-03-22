@@ -25,7 +25,7 @@ func (s *service) add(chatID int64, price int) error {
 		// Renewal: restore existing peer in WireGuard with the same keys
 		hostID := existing.HostID
 		socket := fmt.Sprintf("10.66.66.%d/32", hostID)
-		if err := s.httpClient.RestorePeer(existing.PublicKey, existing.PresharedKey, socket); err != nil {
+		if err := s.httpClient.RestorePeer(existing.PublicKey, existing.PresharedKey, socket, chatID); err != nil {
 			return fmt.Errorf("failed to restore peer: %w", err)
 		}
 		if err := s.postgres.SaveConnection(hostID, existing.PublicKey, existing.PresharedKey, expiresAt); err != nil {

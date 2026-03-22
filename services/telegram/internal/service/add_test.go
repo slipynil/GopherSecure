@@ -71,8 +71,8 @@ func (m *mockHTTPClient) AddPeer(hostID int, dns bool, telegramID int64) (*dto.R
 	return m.addPeerResp, m.addPeerErr
 }
 
-func (m *mockHTTPClient) DeletePeer(publicKey string) error                       { return nil }
-func (m *mockHTTPClient) RestorePeer(publicKey, presharedKey, socket string) error { return nil }
+func (m *mockHTTPClient) DeletePeer(publicKey string) error                                     { return nil }
+func (m *mockHTTPClient) RestorePeer(publicKey, presharedKey, socket string, telegramID int64) error { return nil }
 
 func (m *mockHTTPClient) DownloadConfFile(id int64) ([]byte, error) {
 	return m.downloadConfResp, m.downloadConfErr
@@ -275,7 +275,7 @@ func (m *mockHTTPClientTracked) AddPeer(hostID int, dns bool, telegramID int64) 
 	return responseWithKeys("new-key", "new-pre"), nil
 }
 
-func (m *mockHTTPClientTracked) RestorePeer(publicKey, presharedKey, socket string) error {
+func (m *mockHTTPClientTracked) RestorePeer(publicKey, presharedKey, socket string, telegramID int64) error {
 	m.restorePeerCalled = true
 	m.restoredPublicKey = publicKey
 	return nil

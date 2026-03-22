@@ -95,14 +95,15 @@ func (c *client) DeletePeer(publicKey string) error {
 
 // RestorePeer восстанавливает существующего пира в WireGuard с известными ключами.
 // Используется при продлении подписки — конфиг файл пользователя остаётся валидным.
-func (c *client) RestorePeer(publicKey, presharedKey, socket string) error {
+func (c *client) RestorePeer(publicKey, presharedKey, socket string, telegramID int64) error {
 	url := fmt.Sprintf("%s/peers/restore", c.url)
 
 	reqStruct := struct {
+		TelegramID   int64  `json:"telegram_id"`
 		PublicKey    string `json:"public_key"`
 		PresharedKey string `json:"preshared_key"`
 		Socket       string `json:"socket"`
-	}{publicKey, presharedKey, socket}
+	}{telegramID, publicKey, presharedKey, socket}
 
 	reqBytes, err := json.Marshal(reqStruct)
 	if err != nil {
