@@ -17,6 +17,7 @@ RUN go build -o telegram-service cmd/main.go
 # Внимание! Новый FROM обнуляет всё, что было до этого
 # Мы начинаем с чистого листа
 FROM alpine:latest
+RUN apk add --no-cache tzdata ca-certificates
 WORKDIR /app
 # Мы копируем НЕ с локальной машины, а из этапа "builder"
 # И берем ТОЛЬКО один файл
