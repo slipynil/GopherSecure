@@ -1,5 +1,6 @@
 services:
   service:
+    restart: always
     env_file:
       - .env
     build: .
@@ -24,6 +25,7 @@ services:
     restart: no
 
   postgres:
+    restart: always
     ports:
       - "5432:5432"
     image: postgres:18-bookworm
