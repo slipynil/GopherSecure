@@ -1,7 +1,7 @@
 # --- ЭТАП 1: Сборка (Builder) ---
 # мы даем этому этапу имя "builder",
 # чтобы ссылаться на него позже
-FROM golang:1.26.0-bookworm AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /app
 # Кэшируем зависимости
 ENV GONOSUMDB="*"
